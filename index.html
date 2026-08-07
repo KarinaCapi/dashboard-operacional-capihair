@@ -2017,6 +2017,7 @@ document.getElementById('lastUpdatePill').textContent = '🔄 Atualizado ' + new
 
 // ---------- FILTER STATE ----------
 let filtered = DATA.records.slice();
+let chartJsLoadFailed = false;
 
 function uniq(arr){ return [...new Set(arr)].sort(); }
 function populateSelect(id, values){
@@ -2336,7 +2337,6 @@ function chartUnavailable(id){
   if(el && el.parentElement) el.parentElement.innerHTML = '<div style="padding:30px 10px;text-align:center;color:var(--muted);font-size:12.5px">📡 Gráfico indisponível offline (biblioteca de gráficos não carregou). Os dados completos estão nas tabelas e na base detalhada abaixo.</div>';
 }
 
-let chartJsLoadFailed = false;
 function renderCharts(){
   const chartJsOk = (typeof Chart !== 'undefined');
   if(!chartJsOk){
