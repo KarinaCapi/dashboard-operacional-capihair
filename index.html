@@ -2336,10 +2336,13 @@ function chartUnavailable(id){
   if(el && el.parentElement) el.parentElement.innerHTML = '<div style="padding:30px 10px;text-align:center;color:var(--muted);font-size:12.5px">📡 Gráfico indisponível offline (biblioteca de gráficos não carregou). Os dados completos estão nas tabelas e na base detalhada abaixo.</div>';
 }
 
+let chartJsLoadFailed = false;
 function renderCharts(){
   const chartJsOk = (typeof Chart !== 'undefined');
   if(!chartJsOk){
-    ['chartFilial','chartFilialTempo','chartLider','chartEquipe','chartEquipeImpl','chartImplantador','chartDia'].forEach(chartUnavailable);
+    if(chartJsLoadFailed){
+      ['chartFilial','chartFilialTempo','chartLider','chartEquipe','chartEquipeImpl','chartImplantador','chartDia'].forEach(chartUnavailable);
+    }
     return;
   }
   destroyCharts();
@@ -2577,7 +2580,7 @@ function renderAll(){
   ];
   let i = 0;
   function tryNext(){
-    if(i >= sources.length){ renderAll(); return; }
+    if(i >= sources.length){ chartJsLoadFailed = true; renderAll(); return; }
     const s = document.createElement('script');
     s.src = sources[i++];
     s.onload = renderAll;
