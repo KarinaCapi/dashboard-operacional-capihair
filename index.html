@@ -264,19 +264,6 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:30px 0 10px
     </div>
   </div>
 
-  <!-- PRODUTIVIDADE INDIVIDUAL DE IMPLANTAÇÃO -->
-  <h2 class="sec">Produtividade Individual — Implantação<span class="line"></span></h2>
-  <div class="banner" style="margin-top:0" id="bannerImplantador"></div>
-  <div class="grid2">
-    <div class="card"><h3>🧑‍⚕️ Folículos implantados por pessoa (UF)</h3><canvas id="chartImplantador"></canvas></div>
-    <div class="card table-scroll">
-      <h3>📋 Detalhamento</h3>
-      <table id="tblImplantador"><thead><tr>
-        <th>#</th><th>Pessoa</th><th>Cirurgias c/ contagem</th><th>Total UF implantado</th><th>Média UF/cirurgia</th>
-      </tr></thead><tbody></tbody></table>
-    </div>
-  </div>
-
   <!-- DIA DA SEMANA -->
   <h2 class="sec">Desempenho por Dia da Semana<span class="line"></span></h2>
   <div class="banner" style="margin-top:0" id="bannerDia"></div>
@@ -4414,7 +4401,7 @@ function renderCharts(){
   const chartJsOk = (typeof Chart !== 'undefined');
   if(!chartJsOk){
     if(chartJsLoadFailed){
-      ['chartFilial','chartFilialTempo','chartLider','chartEquipeImpl','chartImplantador','chartDia'].forEach(chartUnavailable);
+      ['chartFilial','chartFilialTempo','chartLider','chartEquipeImpl','chartDia'].forEach(chartUnavailable);
     }
     return;
   }
@@ -4486,15 +4473,7 @@ function renderCharts(){
     });
   }catch(e){ console.error(e); chartUnavailable('chartEquipeImpl'); }
 
-  try{
-    const implArr = computeImplantadorArr();
-    charts.implantador = new Chart(document.getElementById('chartImplantador'), {
-      type:'bar',
-      data:{ labels: implArr.map(e=>e.pessoa), datasets:[{ label:'UF implantados', data: implArr.map(e=>e.total),
-        backgroundColor:'#14b8a6', borderRadius:6 }] },
-      options:{indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{color:tc.grid}}, y:{grid:{display:false}}}}
-    });
-  }catch(e){ console.error(e); chartUnavailable('chartImplantador'); }
+
 
   try{
     const diaArr = computeDiaArr();
@@ -4621,7 +4600,6 @@ function renderAll(){
   renderLiderTable(liderArr);
   renderLiderHighlights(liderArr);
   renderEquipeImplTable(computeEquipeImplArr());
-  renderImplantadorTable(computeImplantadorArr());
   renderDiaTable(computeDiaArr());
   renderCharts();
   renderAlerts();
