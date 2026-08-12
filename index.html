@@ -4319,6 +4319,7 @@ function renderLiderHighlights(liderArr){
 }
 
 function renderDiaTable(diaArr){
+  diaArr = [...diaArr].sort((a,b)=>(b.uf||0)-(a.uf||0));
   const tbody = document.querySelector('#tblDia tbody');
   const bannerEl = document.getElementById('bannerDia');
   const comData = diaArr.filter(d=>d.uf);
