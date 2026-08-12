@@ -4321,7 +4321,7 @@ function renderLiderHighlights(liderArr){
 function renderDiaTable(diaArr){
   const tbody = document.querySelector('#tblDia tbody');
   const bannerEl = document.getElementById('bannerDia');
-  const comData = diaArr.filter(d=>d.ufh);
+  const comData = diaArr.filter(d=>d.uf);
   tbody.innerHTML = diaArr.map(d=>{
     return `<tr><td><b>${d.dia}</b></td><td>${d.proc}</td>
       <td>${d.uf?d.uf.toLocaleString('pt-BR'):'—'}</td><td>${fmtMin(d.tempo)}</td>
@@ -4330,9 +4330,9 @@ function renderDiaTable(diaArr){
   }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted)">Sem registros para os filtros selecionados</td></tr>';
   if(bannerEl){
     if(comData.length){
-      const melhor = [...comData].sort((a,b)=>b.ufh-a.ufh)[0];
-      const pior = [...comData].sort((a,b)=>a.ufh-b.ufh)[0];
-      bannerEl.innerHTML = `<span>📅</span><div><b>${melhor.dia}</b> tem a melhor produtividade (${melhor.ufh.toLocaleString('pt-BR')} UF/hora, ${melhor.proc} cirurgia${melhor.proc!==1?'s':''}) e <b>${pior.dia}</b> a pior (${pior.ufh.toLocaleString('pt-BR')} UF/hora, ${pior.proc} cirurgia${pior.proc!==1?'s':''}). Dias com poucas cirurgias têm amostra pequena — trate com cautela.</div>`;
+      const melhor = [...comData].sort((a,b)=>b.uf-a.uf)[0];
+      const pior = [...comData].sort((a,b)=>a.uf-b.uf)[0];
+      bannerEl.innerHTML = `<span>📅</span><div><b>${melhor.dia}</b> tem a melhor média de UF (${melhor.uf.toLocaleString('pt-BR')} UF/cirurgia, ${melhor.proc} cirurgia${melhor.proc!==1?'s':''}) e <b>${pior.dia}</b> a pior (${pior.uf.toLocaleString('pt-BR')} UF/cirurgia, ${pior.proc} cirurgia${pior.proc!==1?'s':''}). Dias com poucas cirurgias têm amostra pequena — trate com cautela.</div>`;
     } else {
       bannerEl.innerHTML = `<span>📅</span><div>Sem dados suficientes para comparar dias da semana nos filtros selecionados.</div>`;
     }
@@ -4480,11 +4480,11 @@ function renderCharts(){
       type:'bar',
       data:{ labels: diaArr.map(d=>d.dia), datasets:[
         {label:'Procedimentos', data: diaArr.map(d=>d.proc), backgroundColor:'#38bdf8', borderRadius:6, yAxisID:'y'},
-        {label:'Folículos/hora', data: diaArr.map(d=>d.ufh||0), backgroundColor:'#f59e0b', borderRadius:6, yAxisID:'y1', type:'line', borderColor:'#f59e0b', tension:.3}
+        {label:'UF médio', data: diaArr.map(d=>d.uf||0), backgroundColor:'#f59e0b', borderRadius:6, yAxisID:'y1', type:'line', borderColor:'#f59e0b', tension:.3}
       ]},
       options:{responsive:true, plugins:{legend:{position:'bottom'}},
         scales:{ x:{grid:{display:false}}, y:{position:'left', grid:{color:tc.grid}, title:{display:true,text:'Procedimentos'}},
-          y1:{position:'right', grid:{display:false}, title:{display:true,text:'Folículos/hora'}} } }
+          y1:{position:'right', grid:{display:false}, title:{display:true,text:'UF médio (folículos)'}} } }
     });
   }catch(e){ console.error(e); chartUnavailable('chartDia'); }
 }
