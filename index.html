@@ -251,19 +251,6 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:30px 0 10px
     </div>
   </div>
 
-  <!-- EQUIPES -->
-  <h2 class="sec">Comparativo de Equipes — Extração<span class="line"></span></h2>
-  <div class="banner" style="margin-top:0"><span>✅</span><div>Nomes de equipe vêm diretamente das planilhas oficiais (campo "EQUIPE" preenchido pela liderança). Nomes de líderes aparecendo na equipe (Anni, Adriane, Thais, Carol, Larissa Felix, Uane) são esperados — elas fazem parte da equipe de extração/implantação.</div></div>
-  <div class="grid2">
-    <div class="card"><h3>⚡ Produtividade por equipe (folículos/hora)</h3><canvas id="chartEquipe"></canvas></div>
-    <div class="card table-scroll">
-      <h3>📋 Detalhamento</h3>
-      <table id="tblEquipe"><thead><tr>
-        <th>#</th><th>Equipe (resp.)</th><th>Cirurgias</th><th>UF médio</th><th>Tempo médio</th><th>UF/h</th><th>Fios/h</th>
-      </tr></thead><tbody></tbody></table>
-    </div>
-  </div>
-
   <!-- EQUIPE DE IMPLANTAÇÃO -->
   <h2 class="sec">Comparativo de Equipes — Implantação<span class="line"></span></h2>
   <div class="banner" style="margin-top:0"><span>🧮</span><div>UF médio, tempo médio e UF/hora abaixo usam apenas a <b>etapa de implantação</b> (do horário de início ao fim da implantação) e o <b>UF que cada pessoa implantou</b> naquele paciente — não o total da cirurgia inteira (que inclui extração e incisão).</div></div>
@@ -4367,6 +4354,7 @@ function renderDiaTable(diaArr){
 }
 
 function renderLiderTable(liderArr){
+  liderArr = [...liderArr].sort((a,b)=>(b.uf||0)-(a.uf||0));
   const ufhVals = liderArr.map(l=>l.ufh).filter(x=>x);
   const ufhAvgAll = avg(ufhVals);
   const tbody = document.querySelector('#tblLider tbody');
@@ -4426,7 +4414,7 @@ function renderCharts(){
   const chartJsOk = (typeof Chart !== 'undefined');
   if(!chartJsOk){
     if(chartJsLoadFailed){
-      ['chartFilial','chartFilialTempo','chartLider','chartEquipe','chartEquipeImpl','chartImplantador','chartDia'].forEach(chartUnavailable);
+      ['chartFilial','chartFilialTempo','chartLider','chartEquipeImpl','chartImplantador','chartDia'].forEach(chartUnavailable);
     }
     return;
   }
@@ -4487,16 +4475,6 @@ function renderCharts(){
       options:{indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{color:tc.grid}}, y:{grid:{display:false}}}}
     });
   }catch(e){ console.error(e); chartUnavailable('chartLider'); }
-
-  try{
-    const eqArr = computeEquipeArr();
-    charts.equipe = new Chart(document.getElementById('chartEquipe'), {
-      type:'bar',
-      data:{ labels: eqArr.map(e=>e.equipe), datasets:[{ label:'Folículos/hora', data: eqArr.map(e=>e.ufh||0),
-        backgroundColor:'#8b5cf6', borderRadius:6 }] },
-      options:{responsive:true, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{grid:{color:tc.grid}}}}
-    });
-  }catch(e){ console.error(e); chartUnavailable('chartEquipe'); }
 
   try{
     const eqArr = computeEquipeImplArr();
@@ -4642,7 +4620,6 @@ function renderAll(){
   const liderArr = computeLiderArr();
   renderLiderTable(liderArr);
   renderLiderHighlights(liderArr);
-  renderEquipeTable(computeEquipeArr());
   renderEquipeImplTable(computeEquipeImplArr());
   renderImplantadorTable(computeImplantadorArr());
   renderDiaTable(computeDiaArr());
