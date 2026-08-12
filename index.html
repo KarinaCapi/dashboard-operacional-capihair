@@ -234,7 +234,7 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:30px 0 10px
   <!-- FILIAL COMPARATIVO -->
   <h2 class="sec">Comparativo entre Filiais<span class="line"></span></h2>
   <div class="grid2">
-    <div class="card"><h3>📊 Procedimentos, Folículos e Fios</h3><canvas id="chartFilial"></canvas></div>
+    <div class="card"><h3>📊 Folículos por Cirurgia (Média) vs Meta</h3><canvas id="chartFilial"></canvas></div>
     <div class="card"><h3>⏱️ Tempos Médios por Etapa (horas)</h3><canvas id="chartFilialTempo"></canvas></div>
   </div>
 
@@ -4179,8 +4179,8 @@ function renderKPIs(){
 
   const kpis = [
     {c:'k1', lbl:'Total de Cirurgias', val:filtered.length, sub:full.length+' com dados completos'},
-    {c:'k2', lbl:'Total de Folículos', val:totalUF.toLocaleString('pt-BR'), sub:'unidades foliculares (UF)'},
-    {c:'k3', lbl:'Total de Fios', val:totalFios.toLocaleString('pt-BR'), sub:'fios extraídos'},
+    {c:'k2', lbl:'Total de Folículos', val:totalUF.toLocaleString('pt-BR'), sub:'unidades foliculares (UF) · Média: '+(ufCir?ufCir.toLocaleString('pt-BR'):'—')+'/cirurgia'},
+    {c:'k3', lbl:'Total de Fios', val:totalFios.toLocaleString('pt-BR'), sub:'fios extraídos · Média: '+(fiosCir?fiosCir.toLocaleString('pt-BR'):'—')+'/cirurgia'},
     {c:'k4', lbl:'Tempo Médio Cirurgia', val:fmtMin(tMedio), sub:'do início ao fim'},
     {c:'k5', lbl:'Tempo Médio Extração', val:fmtMin(extMedio), sub:'fase de extração (FUE)'},
     {c:'k6', lbl:'Tempo Médio Incisão', val:fmtMin(incMedio), sub:'fase de incisão'},
@@ -4438,24 +4438,21 @@ function renderCharts(){
 
   try{
     const filiais = ['Botafogo','Barra','Goiania'];
+    const META_FOLICULOS = 4500;
     const filialData = filiais.map(f=>{
       const rs = filtered.filter(r=>r.filial===f && r.tem_dados_completos);
-      return { proc: filtered.filter(r=>r.filial===f).length, uf: sum(rs.map(r=>r.uf)), fios: sum(rs.map(r=>r.fios)) };
+      return { mediaUf: rs.length ? Math.round(sum(rs.map(r=>r.uf))/rs.length) : 0 };
     });
-    // Procedimentos usa uma escala bem menor que Folículos/Fios (ex.: 9 vs 6.630), por isso
-    // fica no eixo da esquerda (y) e Folículos/Fios ficam no eixo da direita (y1) — valores reais, sem dividir por nada.
     charts.filial = new Chart(document.getElementById('chartFilial'), {
       type:'bar',
       data:{ labels: filiais, datasets:[
-        {label:'Procedimentos', data: filialData.map(d=>d.proc), backgroundColor:'#818cf8', borderRadius:6, yAxisID:'y'},
-        {label:'Folículos', data: filialData.map(d=>d.uf), backgroundColor:'#38bdf8', borderRadius:6, yAxisID:'y1'},
-        {label:'Fios', data: filialData.map(d=>d.fios), backgroundColor:'#f472b6', borderRadius:6, yAxisID:'y1'},
+        {label:'Folículos / cirurgia (média)', data: filialData.map(d=>d.mediaUf), backgroundColor: filialData.map(d=>d.mediaUf>=META_FOLICULOS?'#10b981':'#f59e0b'), borderRadius:6, order:2},
+        {label:'Meta: 4.500 folículos/cirurgia', data: filiais.map(()=>META_FOLICULOS), type:'line', borderColor:'#ef4444', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false, order:1},
       ]},
       options:{responsive:true, plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}},
         scales:{
           x:{grid:{display:false}},
-          y:{position:'left', grid:{color:tc.grid}, title:{display:true,text:'Procedimentos'}, beginAtZero:true},
-          y1:{position:'right', grid:{display:false}, title:{display:true,text:'Folículos / Fios'}, beginAtZero:true},
+          y:{position:'left', grid:{color:tc.grid}, title:{display:true,text:'Folículos / cirurgia (média)'}, beginAtZero:true},
         }}
     });
   }catch(e){ console.error(e); chartUnavailable('chartFilial'); }
