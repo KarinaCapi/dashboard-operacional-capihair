@@ -4194,21 +4194,36 @@ function renderKPIs(){
 }
 
 // ---------- CAPACIDADE ----------
+function diasUteis(iniStr, fimStr){
+  if(!iniStr || !fimStr) return 0;
+  const ini = new Date(iniStr+'T00:00:00');
+  const fim = new Date(fimStr+'T00:00:00');
+  if(fim < ini) return 0;
+  let count = 0;
+  for(let d = new Date(ini); d <= fim; d.setDate(d.getDate()+1)){
+    if(d.getDay() !== 0) count++; // domingo: clinica fechada, nao entra na capacidade
+  }
+  return count;
+}
 function renderCapacidade(){
   const filiais = ['Botafogo','Barra','Goiania'];
   const cls = {Botafogo:'fc-bota', Barra:'fc-barra', Goiania:'fc-goia'};
+  const periodoIni = fDataIniEl.value || DATA_MIN;
+  const periodoFim = fDataFimEl.value || DATA_MAX;
+  const dias = diasUteis(periodoIni, periodoFim);
   const html = filiais.map(f=>{
     const cap = DATA.capacidade[f];
-    const rs = filtered.filter(r=>r.filial===f);
-    const total = DATA.records.filter(r=>r.filial===f).length; // ocupação sempre sobre total real, não filtro
-    const pct = cap ? Math.round(total/cap.capacidade_total*1000)/10 : 0;
-    const full = rs.filter(r=>r.tem_dados_completos);
+    const periodRecords = DATA.records.filter(r=>r.filial===f && r.data>=periodoIni && r.data<=periodoFim);
+    const total = periodRecords.length;
+    const capacidadeTotal = cap.salas * dias;
+    const pct = capacidadeTotal ? Math.round(total/capacidadeTotal*1000)/10 : 0;
+    const full = periodRecords.filter(r=>r.tem_dados_completos);
     return `<div class="filial-card ${cls[f]}">
       <h3>${f}</h3>
-      <div style="font-size:11.5px;opacity:.9;margin-top:2px">${cap.salas} sala${cap.salas>1?'s':''}/dia · ${DATA.dias_periodo} dias no período</div>
+      <div style="font-size:11.5px;opacity:.9;margin-top:2px">${cap.salas} sala${cap.salas>1?'s':''}/dia · ${dias} dias úteis no período</div>
       <div class="grid">
         <div class="mini"><div class="n">${total}</div><div class="l">Cirurgias</div></div>
-        <div class="mini"><div class="n">${cap.capacidade_total}</div><div class="l">Capacidade</div></div>
+        <div class="mini"><div class="n">${capacidadeTotal}</div><div class="l">Capacidade</div></div>
         <div class="mini"><div class="n">${sum(full.map(r=>r.uf)).toLocaleString('pt-BR')}</div><div class="l">Folículos</div></div>
         <div class="mini"><div class="n">${avg(full.map(r=>r.tempo_procedimento_min))?fmtMin(avg(full.map(r=>r.tempo_procedimento_min))):'—'}</div><div class="l">Tempo médio</div></div>
       </div>
