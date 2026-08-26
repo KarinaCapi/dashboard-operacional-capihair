@@ -81,6 +81,8 @@ h2.sec .line{flex:1;height:1px;background:var(--border)}
 .filial-card h3{margin:0;font-size:16px;font-weight:800}
 .filial-card .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
 .filial-card .mini{background:rgba(255,255,255,.14);border-radius:10px;padding:8px 10px}
+.wow-badge{display:inline-block;margin-top:8px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.22);font-size:10.5px;font-weight:700;letter-spacing:.01em}
+#tblEquipeImpl thead th{position:sticky;top:0;background:var(--card);z-index:2;box-shadow:0 1px 0 var(--border)}
 .filial-card .mini .n{font-size:18px;font-weight:800}
 .filial-card .mini .l{font-size:10px;text-transform:uppercase;opacity:.85;font-weight:700}
 .occ-bar{height:10px;border-radius:6px;background:rgba(255,255,255,.25);margin-top:12px;overflow:hidden}
@@ -264,9 +266,11 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:30px 0 10px
     <div class="card"><h3>🌱 Produtividade na implantação (folículos/hora)</h3><canvas id="chartEquipeImpl"></canvas></div>
     <div class="card">
       <h3>📋 Detalhamento</h3>
+      <div class="table-scroll" style="max-height:440px;overflow-y:auto;border-radius:8px">
       <table id="tblEquipeImpl"><thead><tr>
         <th>#</th><th>Pessoa</th><th>Cirurgias</th><th>UF médio implantado</th><th>Tempo médio implantação</th><th>UF/h implantação</th>
       </tr></thead><tbody></tbody></table>
+      </div>
     </div>
   </div>
 
@@ -394,6 +398,80 @@ function fmtMin(m){ if(m===null||m===undefined) return '—'; const h=Math.floor
 function filialClass(f){ return f==='Botafogo'?'chip-bota':f==='Barra'?'chip-barra':'chip-goia'; }
 function filialColor(f){ return f==='Botafogo'?'#3b82f6':f==='Barra'?'#f59e0b':'#10b981'; }
 
+// ---------- COMPARACAO SEMANA ANTERIOR ----------
+function mondayOf(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = d.getDay();
+  const diff = (day===0?-6:1-day);
+  d.setDate(d.getDate()+diff);
+  return d;
+}
+function fmtDateLocal(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function getPrevWeekRange(){
+  const ref = fDataFimEl.value || DATA_MAX;
+  if(!ref) return null;
+  const monday = mondayOf(ref);
+  const prevMonday = new Date(monday); prevMonday.setDate(prevMonday.getDate()-7);
+  const prevSunday = new Date(monday); prevSunday.setDate(prevSunday.getDate()-1);
+  return { ini: fmtDateLocal(prevMonday), fim: fmtDateLocal(prevSunday) };
+}
+function filtrarRecordsPorPeriodo(iniStr, fimStr){
+  const fFilial = document.getElementById('fFilial').value;
+  const fLider = document.getElementById('fLider').value;
+  const fEquipe = document.getElementById('fEquipe').value;
+  const fTipo = document.getElementById('fTipo').value;
+  const fDia = document.getElementById('fDia').value;
+  const fPac = document.getElementById('fPaciente').value.toLowerCase();
+  const fComp = document.getElementById('fCompletos').value;
+  return DATA.records.filter(r=>{
+    if(fFilial && r.filial!==fFilial) return false;
+    if(fLider && r.lider!==fLider) return false;
+    if(fEquipe && primeiraEquipe(r)!==fEquipe) return false;
+    if(fTipo && (r.tipo_procedimento || 'Transplante Capilar')!==fTipo) return false;
+    if(fDia && r.dia_semana!==fDia) return false;
+    if(fPac && !r.paciente.toLowerCase().includes(fPac)) return false;
+    if(fComp==='1' && !r.tem_dados_completos) return false;
+    if(fComp==='0' && r.tem_dados_completos) return false;
+    if(iniStr && r.data < iniStr) return false;
+    if(fimStr && r.data > fimStr) return false;
+    return true;
+  });
+}
+function getPrevWeekRecords(){
+  const range = getPrevWeekRange();
+  if(!range) return [];
+  return filtrarRecordsPorPeriodo(range.ini, range.fim);
+}
+function computeKPIStatsFrom(recs){
+  const full = recs.filter(r=>r.tem_dados_completos);
+  return {
+    total: recs.length,
+    totalUF: sum(full.map(r=>r.uf)),
+    totalFios: sum(full.map(r=>r.fios)),
+    tMedio: avg(full.map(r=>r.tempo_procedimento_min)),
+    extMedio: avg(full.map(r=>r.tempo_extracao_min)),
+    incMedio: avg(full.map(r=>r.tempo_incisao_min)),
+    implMedio: avg(full.map(r=>r.tempo_implantacao_min)),
+    ufCir: avg(full.map(r=>r.uf)),
+    fiosCir: avg(full.map(r=>r.fios)),
+    ufHora: avg(full.map(r=>r.foliculos_por_hora)),
+  };
+}
+function wowBadge(curr, prev){
+  if(curr===null||curr===undefined||isNaN(curr)) return '';
+  if(prev===null||prev===undefined||isNaN(prev)||prev===0){
+    return curr>0 ? '<div class="wow-badge">sem dado p/ comparar</div>' : '';
+  }
+  const delta = ((curr-prev)/prev)*100;
+  const arrow = delta>0.5 ? '▲' : (delta<-0.5 ? '▼' : '▬');
+  const sign = delta>0 ? '+' : '';
+  const deltaFmt = delta.toLocaleString('pt-BR',{maximumFractionDigits:1});
+  return `<div class="wow-badge">${arrow} ${sign}${deltaFmt}% vs sem. anterior</div>`;
+}
+
 // ---------- RENDER KPI ----------
 function renderKPIs(){
   const full = filtered.filter(r=>r.tem_dados_completos);
@@ -407,19 +485,20 @@ function renderKPIs(){
   const fiosCir = avg(full.map(r=>r.fios));
   const ufHora = avg(full.map(r=>r.foliculos_por_hora));
 
+  const prevStats = computeKPIStatsFrom(getPrevWeekRecords());
   const kpis = [
-    {c:'k1', lbl:'Total de Cirurgias', val:filtered.length, sub:full.length+' com dados completos'},
-    {c:'k2', lbl:'Total de Folículos', val:totalUF.toLocaleString('pt-BR'), sub:'unidades foliculares (UF) · Média: '+(ufCir?ufCir.toLocaleString('pt-BR'):'—')+'/cirurgia'},
-    {c:'k3', lbl:'Total de Fios', val:totalFios.toLocaleString('pt-BR'), sub:'fios extraídos · Média: '+(fiosCir?fiosCir.toLocaleString('pt-BR'):'—')+'/cirurgia'},
-    {c:'k4', lbl:'Tempo Médio Cirurgia', val:fmtMin(tMedio), sub:'do início ao fim'},
-    {c:'k5', lbl:'Tempo Médio Extração', val:fmtMin(extMedio), sub:'fase de extração (FUE)'},
-    {c:'k6', lbl:'Tempo Médio Incisão', val:fmtMin(incMedio), sub:'fase de incisão'},
-    {c:'k9', lbl:'Tempo Médio Implantação', val:fmtMin(implMedio), sub:'do início da implantação ao fim'},
-    {c:'k7', lbl:'Folículos / Cirurgia', val:ufCir? ufCir.toLocaleString('pt-BR'):'—', sub:fiosCir? fiosCir.toLocaleString('pt-BR')+' fios/cirurgia':''},
-    {c:'k8', lbl:'Folículos / Hora', val:ufHora? ufHora.toLocaleString('pt-BR',{maximumFractionDigits:0}):'—', sub:'produtividade média'},
+    {c:'k1', lbl:'Total de Cirurgias', val:filtered.length, sub:full.length+' com dados completos', curr:filtered.length, prev:prevStats.total},
+    {c:'k2', lbl:'Total de Folículos', val:totalUF.toLocaleString('pt-BR'), sub:'unidades foliculares (UF) · Média: '+(ufCir?ufCir.toLocaleString('pt-BR'):'—')+'/cirurgia', curr:totalUF, prev:prevStats.totalUF},
+    {c:'k3', lbl:'Total de Fios', val:totalFios.toLocaleString('pt-BR'), sub:'fios extraídos · Média: '+(fiosCir?fiosCir.toLocaleString('pt-BR'):'—')+'/cirurgia', curr:totalFios, prev:prevStats.totalFios},
+    {c:'k4', lbl:'Tempo Médio Cirurgia', val:fmtMin(tMedio), sub:'do início ao fim', curr:tMedio, prev:prevStats.tMedio},
+    {c:'k5', lbl:'Tempo Médio Extração', val:fmtMin(extMedio), sub:'fase de extração (FUE)', curr:extMedio, prev:prevStats.extMedio},
+    {c:'k6', lbl:'Tempo Médio Incisão', val:fmtMin(incMedio), sub:'fase de incisão', curr:incMedio, prev:prevStats.incMedio},
+    {c:'k9', lbl:'Tempo Médio Implantação', val:fmtMin(implMedio), sub:'do início da implantação ao fim', curr:implMedio, prev:prevStats.implMedio},
+    {c:'k7', lbl:'Folículos / Cirurgia', val:ufCir? ufCir.toLocaleString('pt-BR'):'—', sub:fiosCir? fiosCir.toLocaleString('pt-BR')+' fios/cirurgia':'', curr:ufCir, prev:prevStats.ufCir},
+    {c:'k8', lbl:'Folículos / Hora', val:ufHora? ufHora.toLocaleString('pt-BR',{maximumFractionDigits:0}):'—', sub:'produtividade média', curr:ufHora, prev:prevStats.ufHora},
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
-    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val">${k.val}</div><div class="sub">${k.sub}</div></div>
+    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val">${k.val}</div><div class="sub">${k.sub}</div>${wowBadge(k.curr,k.prev)}</div>
   `).join('');
 }
 
@@ -454,7 +533,7 @@ function renderCapacidade(){
       <div class="grid">
         <div class="mini"><div class="n">${total}</div><div class="l">Cirurgias</div></div>
         <div class="mini"><div class="n">${capacidadeTotal}</div><div class="l">Capacidade</div></div>
-        <div class="mini"><div class="n">${sum(full.map(r=>r.uf)).toLocaleString('pt-BR')}</div><div class="l">Folículos</div></div>
+        <div class="mini"><div class="n">${sum(full.map(r=>r.uf)).toLocaleString('pt-BR')}</div><div class="l">Folículos</div><div class="l" style="margin-top:3px;opacity:.85">Média: ${total? Math.round(sum(full.map(r=>r.uf))/total).toLocaleString('pt-BR') : '—'} UF/cirurgia</div></div>
         <div class="mini"><div class="n">${avg(full.map(r=>r.tempo_procedimento_min))?fmtMin(avg(full.map(r=>r.tempo_procedimento_min))):'—'}</div><div class="l">Tempo médio</div></div>
       </div>
       <div class="occ-bar"><div class="occ-fill" style="width:${Math.min(pct,100)}%"></div></div>
@@ -474,9 +553,10 @@ function themeColors(){
 }
 
 // ---------- DATA AGGREGATION (nao depende do Chart.js) ----------
-function computeLiderArr(){
+function computeLiderArr(recsParam){
+  const recs = recsParam || filtered;
   const liderMap = {};
-  filtered.forEach(r=>{ (liderMap[r.lider] = liderMap[r.lider]||[]).push(r); });
+  recs.forEach(r=>{ (liderMap[r.lider] = liderMap[r.lider]||[]).push(r); });
   return Object.entries(liderMap).map(([l,rs])=>{
     const full = rs.filter(r=>r.tem_dados_completos);
     return { lider:l, filial: [...new Set(rs.map(r=>r.filial))].join('/'), cirurgias: rs.length,
@@ -561,19 +641,27 @@ function renderLiderHighlights(liderArr){
   const byExt = liderArr.filter(l=>l.ext).sort((a,b)=>b.ext-a.ext);
   const byInc = liderArr.filter(l=>l.inc).sort((a,b)=>b.inc-a.inc);
   if(!byUf.length || !byTempo.length || !byExt.length || !byInc.length){ el.innerHTML=''; return; }
+  const prevLiderArr = computeLiderArr(getPrevWeekRecords());
+  function prevMetric(nome, metric){
+    const p = prevLiderArr.find(l=>l.lider===nome);
+    return p ? p[metric] : null;
+  }
   const cards = [
-    {c:'k2', lbl:'Mais folículos/cirurgia', val: byUf[0].lider, sub: byUf[0].uf.toLocaleString('pt-BR')+' UF em média'},
-    {c:'k3', lbl:'Menos folículos/cirurgia', val: byUf[byUf.length-1].lider, sub: byUf[byUf.length-1].uf.toLocaleString('pt-BR')+' UF em média'},
-    {c:'k4', lbl:'Cirurgia mais rápida', val: byTempo[0].lider, sub: fmtMin(byTempo[0].tempo)},
-    {c:'k5', lbl:'Cirurgia mais lenta', val: byTempo[byTempo.length-1].lider, sub: fmtMin(byTempo[byTempo.length-1].tempo)},
-    {c:'k6', lbl:'Maior tempo de extração', val: byExt[0].lider, sub: fmtMin(byExt[0].ext)},
-    {c:'k1', lbl:'Menor tempo de extração', val: byExt[byExt.length-1].lider, sub: fmtMin(byExt[byExt.length-1].ext)},
-    {c:'k7', lbl:'Maior tempo de incisão', val: byInc[0].lider, sub: fmtMin(byInc[0].inc)},
-    {c:'k8', lbl:'Menor tempo de incisão', val: byInc[byInc.length-1].lider, sub: fmtMin(byInc[byInc.length-1].inc)},
+    {c:'k2', lbl:'Mais folículos/cirurgia', val: byUf[0].lider, sub: byUf[0].uf.toLocaleString('pt-BR')+' UF em média', metric:'uf', curr: byUf[0].uf},
+    {c:'k3', lbl:'Menos folículos/cirurgia', val: byUf[byUf.length-1].lider, sub: byUf[byUf.length-1].uf.toLocaleString('pt-BR')+' UF em média', metric:'uf', curr: byUf[byUf.length-1].uf},
+    {c:'k4', lbl:'Cirurgia mais rápida', val: byTempo[0].lider, sub: fmtMin(byTempo[0].tempo), metric:'tempo', curr: byTempo[0].tempo},
+    {c:'k5', lbl:'Cirurgia mais lenta', val: byTempo[byTempo.length-1].lider, sub: fmtMin(byTempo[byTempo.length-1].tempo), metric:'tempo', curr: byTempo[byTempo.length-1].tempo},
+    {c:'k6', lbl:'Maior tempo de extração', val: byExt[0].lider, sub: fmtMin(byExt[0].ext), metric:'ext', curr: byExt[0].ext},
+    {c:'k1', lbl:'Menor tempo de extração', val: byExt[byExt.length-1].lider, sub: fmtMin(byExt[byExt.length-1].ext), metric:'ext', curr: byExt[byExt.length-1].ext},
+    {c:'k7', lbl:'Maior tempo de incisão', val: byInc[0].lider, sub: fmtMin(byInc[0].inc), metric:'inc', curr: byInc[0].inc},
+    {c:'k8', lbl:'Menor tempo de incisão', val: byInc[byInc.length-1].lider, sub: fmtMin(byInc[byInc.length-1].inc), metric:'inc', curr: byInc[byInc.length-1].inc},
   ];
-  el.innerHTML = cards.map(k=>`
-    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val" style="font-size:19px">${k.val}</div><div class="sub">${k.sub}</div></div>
-  `).join('');
+  el.innerHTML = cards.map(k=>{
+    const pv = prevMetric(k.val, k.metric);
+    return `
+    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val" style="font-size:19px">${k.val}</div><div class="sub">${k.sub}</div>${wowBadge(k.curr,pv)}</div>
+  `;
+  }).join('');
 }
 
 function renderDiaTable(diaArr){
