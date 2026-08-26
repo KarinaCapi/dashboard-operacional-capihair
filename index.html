@@ -246,6 +246,22 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:30px 0 10px
     <div class="card"><h3>⏱️ Tempos Médios por Etapa (horas)</h3><canvas id="chartFilialTempo"></canvas></div>
   </div>
 
+  <!-- EVOLUCAO SEMANAL (ANALISE HORIZONTAL) -->
+  <h2 class="sec">Evolução Semanal<span class="line"></span></h2>
+  <div class="banner" style="margin-top:0"><span>📈</span><div><b>Análise horizontal:</b> acompanha a mesma métrica ao longo de cada semana corrida (segunda a domingo) dentro do período filtrado, para ver tendência de crescimento, queda ou estabilidade.</div></div>
+  <div class="grid2">
+    <div class="card"><h3>📈 Cirurgias por Semana</h3><canvas id="chartEvolCirurgias"></canvas></div>
+    <div class="card"><h3>📈 % de Ocupação por Semana</h3><canvas id="chartEvolOcupacao"></canvas></div>
+  </div>
+
+  <!-- PARTICIPACAO NO PERIODO (ANALISE VERTICAL) -->
+  <h2 class="sec">Participação no Período<span class="line"></span></h2>
+  <div class="banner" style="margin-top:0"><span>🥧</span><div><b>Análise vertical:</b> mostra o peso percentual de cada filial e de cada líder/técnica dentro do total do período filtrado.</div></div>
+  <div class="grid2">
+    <div class="card"><h3>🥧 Participação por Filial</h3><canvas id="chartPartFilial"></canvas></div>
+    <div class="card"><h3>🥧 Participação por Líder/Técnica (Implantação)</h3><canvas id="chartPartLider"></canvas></div>
+  </div>
+
   <!-- LIDERES -->
   <h2 class="sec">Ranking das Líderes<span class="line"></span></h2>
   <div class="kpi-grid" id="liderHighlights" style="margin-bottom:16px"></div>
@@ -397,6 +413,77 @@ function sum(arr){ return arr.filter(x=>x!==null && x!==undefined).reduce((a,b)=
 function fmtMin(m){ if(m===null||m===undefined) return '—'; const h=Math.floor(m/60), mm=Math.round(m%60); return h>0 ? `${h}h${String(mm).padStart(2,'0')}m` : `${mm}m`; }
 function filialClass(f){ return f==='Botafogo'?'chip-bota':f==='Barra'?'chip-barra':'chip-goia'; }
 function filialColor(f){ return f==='Botafogo'?'#3b82f6':f==='Barra'?'#f59e0b':'#10b981'; }
+
+// ---------- EVOLUCAO SEMANAL E PARTICIPACAO (HORIZONTAL / VERTICAL) ----------
+function computeWeeklyEvolution(){
+  const weekMap = {};
+  filtered.forEach(r=>{
+    const wk = fmtDateLocal(mondayOf(r.data));
+    (weekMap[wk] = weekMap[wk] || []).push(r);
+  });
+  const weekKeys = Object.keys(weekMap).sort();
+  const filiaisAll = ['Botafogo','Barra','Goiania'];
+  const filiaisAtivas = filiaisAll.filter(f=>filtered.some(r=>r.filial===f));
+  return weekKeys.map(wk=>{
+    const recs = weekMap[wk];
+    const monday = new Date(wk+'T00:00:00');
+    const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
+    const sundayStr = fmtDateLocal(sunday);
+    const dias = diasUteis(wk, sundayStr);
+    const porFilial = {};
+    filiaisAtivas.forEach(f=>{
+      const rs = recs.filter(r=>r.filial===f);
+      const cap = DATA.capacidade[f];
+      const capacidadeTotal = cap ? cap.salas*dias : 0;
+      const pct = capacidadeTotal ? Math.round(rs.length/capacidadeTotal*1000)/10 : null;
+      porFilial[f] = { cirurgias: rs.length, ocupacao: pct };
+    });
+    return { weekKey: wk, label: fmtDateBR(wk)+'–'+fmtDateBR(sundayStr), porFilial };
+  });
+}
+
+function computeParticipacaoFilial(){
+  const filiaisAll = ['Botafogo','Barra','Goiania'];
+  const totalCirurgias = filtered.length;
+  const full = filtered.filter(r=>r.tem_dados_completos);
+  const totalUF = sum(full.map(r=>r.uf));
+  return filiaisAll.map(f=>{
+    const rs = filtered.filter(r=>r.filial===f);
+    const rsFull = rs.filter(r=>r.tem_dados_completos);
+    const ufF = sum(rsFull.map(r=>r.uf));
+    return {
+      filial: f,
+      cirurgias: rs.length,
+      pctCirurgias: totalCirurgias ? Math.round(rs.length/totalCirurgias*1000)/10 : 0,
+      uf: ufF,
+      pctUf: totalUF ? Math.round(ufF/totalUF*1000)/10 : 0,
+    };
+  }).filter(x=>x.cirurgias>0);
+}
+
+function computeParticipacaoLider(){
+  const map = {};
+  let totalUF = 0;
+  filtered.forEach(r=>{
+    if(r.implantacao_uf_pessoa && r.tempo_implantacao_min){
+      Object.entries(r.implantacao_uf_pessoa).forEach(([pessoa, ufPessoa])=>{
+        if(LIDERES_EXCLUIR_IMPLANTACAO.includes(pessoa)) return;
+        map[pessoa] = (map[pessoa]||0) + (ufPessoa||0);
+        totalUF += (ufPessoa||0);
+      });
+    }
+  });
+  const arr = Object.entries(map).map(([pessoa,uf])=>({
+    pessoa, uf, pct: totalUF ? Math.round(uf/totalUF*1000)/10 : 0
+  })).sort((a,b)=>b.uf-a.uf);
+  const TOP_N = 8;
+  if(arr.length <= TOP_N) return arr;
+  const top = arr.slice(0, TOP_N);
+  const outros = arr.slice(TOP_N);
+  const outrosUf = sum(outros.map(o=>o.uf));
+  top.push({ pessoa: 'Outros', uf: outrosUf, pct: totalUF ? Math.round(outrosUf/totalUF*1000)/10 : 0 });
+  return top;
+}
 
 // ---------- COMPARACAO SEMANA ANTERIOR ----------
 function mondayOf(dateStr){
@@ -757,7 +844,7 @@ function renderCharts(){
   const chartJsOk = (typeof Chart !== 'undefined');
   if(!chartJsOk){
     if(chartJsLoadFailed){
-      ['chartFilial','chartFilialTempo','chartLider','chartEquipeImpl','chartDia'].forEach(chartUnavailable);
+      ['chartFilial','chartFilialTempo','chartLider','chartEquipeImpl','chartDia','chartEvolCirurgias','chartEvolOcupacao','chartPartFilial','chartPartLider'].forEach(chartUnavailable);
     }
     return;
   }
@@ -844,6 +931,59 @@ function renderCharts(){
           y1:{position:'right', grid:{display:false}, title:{display:true,text:'UF médio (folículos)'}} } }
     });
   }catch(e){ console.error(e); chartUnavailable('chartDia'); }
+
+  try{
+    const evol = computeWeeklyEvolution();
+    const filiaisAtivas = ['Botafogo','Barra','Goiania'].filter(f=>filtered.some(r=>r.filial===f));
+    charts.evolCirurgias = new Chart(document.getElementById('chartEvolCirurgias'), {
+      type:'line',
+      data:{ labels: evol.map(w=>w.label), datasets: filiaisAtivas.map(f=>({
+        label: f, data: evol.map(w=>w.porFilial[f]?w.porFilial[f].cirurgias:0),
+        borderColor: filialColor(f), backgroundColor: filialColor(f), tension:.3, pointRadius:3, fill:false
+      })) },
+      options:{responsive:true, plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}},
+        scales:{ x:{grid:{display:false}}, y:{position:'left', grid:{color:tc.grid}, title:{display:true,text:'Cirurgias'}, beginAtZero:true} } }
+    });
+  }catch(e){ console.error(e); chartUnavailable('chartEvolCirurgias'); }
+
+  try{
+    const evol = computeWeeklyEvolution();
+    const filiaisAtivas = ['Botafogo','Barra','Goiania'].filter(f=>filtered.some(r=>r.filial===f));
+    charts.evolOcupacao = new Chart(document.getElementById('chartEvolOcupacao'), {
+      type:'line',
+      data:{ labels: evol.map(w=>w.label), datasets: filiaisAtivas.map(f=>({
+        label: f, data: evol.map(w=>w.porFilial[f]?w.porFilial[f].ocupacao:null),
+        borderColor: filialColor(f), backgroundColor: filialColor(f), tension:.3, pointRadius:3, fill:false, spanGaps:true
+      })) },
+      options:{responsive:true, plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}},
+        scales:{ x:{grid:{display:false}}, y:{position:'left', grid:{color:tc.grid}, title:{display:true,text:'% de ocupação'}, beginAtZero:true} } }
+    });
+  }catch(e){ console.error(e); chartUnavailable('chartEvolOcupacao'); }
+
+  try{
+    const part = computeParticipacaoFilial();
+    charts.partFilial = new Chart(document.getElementById('chartPartFilial'), {
+      type:'bar',
+      data:{ labels: part.map(p=>p.filial), datasets:[
+        {label:'% Cirurgias', data: part.map(p=>p.pctCirurgias), backgroundColor: part.map(p=>filialColor(p.filial)), borderRadius:6},
+        {label:'% Folículos', data: part.map(p=>p.pctUf), backgroundColor: part.map(p=>filialColor(p.filial)+'99'), borderRadius:6},
+      ]},
+      options:{indexAxis:'y', responsive:true, plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}}},
+        scales:{ x:{grid:{color:tc.grid}, title:{display:true,text:'% do total no período'}, beginAtZero:true, max:100}, y:{grid:{display:false}} } }
+    });
+  }catch(e){ console.error(e); chartUnavailable('chartPartFilial'); }
+
+  try{
+    const partL = computeParticipacaoLider();
+    charts.partLider = new Chart(document.getElementById('chartPartLider'), {
+      type:'bar',
+      data:{ labels: partL.map(p=>p.pessoa), datasets:[
+        {label:'% do UF implantado total', data: partL.map(p=>p.pct), backgroundColor:'#8b5cf6', borderRadius:6},
+      ]},
+      options:{indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
+        scales:{ x:{grid:{color:tc.grid}, title:{display:true,text:'% do total implantado no período'}, beginAtZero:true}, y:{grid:{display:false}} } }
+    });
+  }catch(e){ console.error(e); chartUnavailable('chartPartLider'); }
 }
 
 // ---------- ALERTAS ----------
