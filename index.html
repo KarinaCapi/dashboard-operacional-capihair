@@ -469,8 +469,17 @@ function getPrevPeriodoRange(){
   const iniD = new Date(atual.ini+'T00:00:00');
   const fimD = new Date(atual.fim+'T00:00:00');
   const lengthDays = Math.round((fimD-iniD)/86400000)+1;
-  const prevFim = new Date(iniD); prevFim.setDate(prevFim.getDate()-1);
-  const prevIni = new Date(prevFim); prevIni.setDate(prevIni.getDate()-(lengthDays-1));
+  let prevIni, prevFim;
+  // Semana de trabalho CapiHair: segunda a sábado (domingo é folga).
+  // Se o período selecionado for exatamente uma semana completa (segunda a sábado),
+  // compara com a semana de trabalho anterior (mesmo dia da semana), pulando o domingo de folga.
+  if(lengthDays===6 && iniD.getDay()===1 && fimD.getDay()===6){
+    prevIni = new Date(iniD); prevIni.setDate(prevIni.getDate()-7);
+    prevFim = new Date(fimD); prevFim.setDate(prevFim.getDate()-7);
+  } else {
+    prevFim = new Date(iniD); prevFim.setDate(prevFim.getDate()-1);
+    prevIni = new Date(prevFim); prevIni.setDate(prevIni.getDate()-(lengthDays-1));
+  }
   return { ini: fmtDateLocal(prevIni), fim: fmtDateLocal(prevFim), lengthDays };
 }
 function getPrevPeriodoRecords(){
