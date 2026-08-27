@@ -83,6 +83,12 @@ h2.sec .line{flex:1;height:1px;background:var(--border)}
 .filial-card .mini{background:rgba(255,255,255,.14);border-radius:10px;padding:8px 10px}
 .wow-badge{display:inline-block;margin-top:8px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.22);font-size:10.5px;font-weight:700;letter-spacing:.01em}
 #tblEquipeImpl thead th{position:sticky;top:0;background:var(--card);z-index:2;box-shadow:0 1px 0 var(--border)}
+.comp-table th{white-space:nowrap}
+.comp-table td{font-size:12.5px;vertical-align:middle}
+.comp-table thead th{position:sticky;top:0;background:var(--card);z-index:2;box-shadow:0 1px 0 var(--border)}
+.delta-up{color:#10b981;font-weight:700;white-space:nowrap}
+.delta-down{color:#ef4444;font-weight:700;white-space:nowrap}
+.delta-flat{color:var(--muted);font-weight:700;white-space:nowrap}
 .filial-card .mini .n{font-size:18px;font-weight:800}
 .filial-card .mini .l{font-size:10px;text-transform:uppercase;opacity:.85;font-weight:700}
 .occ-bar{height:10px;border-radius:6px;background:rgba(255,255,255,.25);margin-top:12px;overflow:hidden}
@@ -230,6 +236,10 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:30px 0 10px
     <button class="reset" id="resetBtn">✕ Limpar filtros</button>
     <span class="count-badge" id="countBadge">17 cirurgias</span>
   </div>
+
+  <!-- ANALISE COMPARATIVA -->
+  <h2 class="sec">📊 Análise Comparativa<span class="line"></span></h2>
+  <div id="analiseComparativa"></div>
 
   <!-- KPIs -->
   <h2 class="sec">Indicadores Gerais<span class="line"></span></h2>
@@ -485,25 +495,15 @@ function computeParticipacaoLider(){
   return top;
 }
 
-// ---------- COMPARACAO SEMANA ANTERIOR ----------
-function mondayOf(dateStr){
-  const d = new Date(dateStr+'T00:00:00');
-  const day = d.getDay();
-  const diff = (day===0?-6:1-day);
-  d.setDate(d.getDate()+diff);
-  return d;
-}
+// ---------- COMPARACAO COM PERIODO ANTERIOR (mesmo numero de dias, dinamico) ----------
 function fmtDateLocal(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${dd}`;
 }
-function getPrevWeekRange(){
-  const ref = fDataFimEl.value || DATA_MAX;
-  if(!ref) return null;
-  const monday = mondayOf(ref);
-  const prevMonday = new Date(monday); prevMonday.setDate(prevMonday.getDate()-7);
-  const prevSunday = new Date(monday); prevSunday.setDate(prevSunday.getDate()-1);
-  return { ini: fmtDateLocal(prevMonday), fim: fmtDateLocal(prevSunday) };
+function fmtDateBR(dateStr){
+  if(!dateStr) return '';
+  const [y,m,d] = dateStr.split('-');
+  return `${d}/${m}`;
 }
 function filtrarRecordsPorPeriodo(iniStr, fimStr){
   const fFilial = document.getElementById('fFilial').value;
@@ -527,49 +527,138 @@ function filtrarRecordsPorPeriodo(iniStr, fimStr){
     return true;
   });
 }
-function getPrevWeekRecords(){
-  const range = getPrevWeekRange();
+function getPeriodoAtualRange(){
+  const ini = fDataIniEl.value || DATA_MIN;
+  const fim = fDataFimEl.value || DATA_MAX;
+  if(!ini || !fim) return null;
+  return { ini, fim };
+}
+function getPrevPeriodoRange(){
+  const atual = getPeriodoAtualRange();
+  if(!atual) return null;
+  const iniD = new Date(atual.ini+'T00:00:00');
+  const fimD = new Date(atual.fim+'T00:00:00');
+  const lengthDays = Math.round((fimD-iniD)/86400000)+1;
+  const prevFim = new Date(iniD); prevFim.setDate(prevFim.getDate()-1);
+  const prevIni = new Date(prevFim); prevIni.setDate(prevIni.getDate()-(lengthDays-1));
+  return { ini: fmtDateLocal(prevIni), fim: fmtDateLocal(prevFim), lengthDays };
+}
+function getPrevPeriodoRecords(){
+  const range = getPrevPeriodoRange();
   if(!range) return [];
   return filtrarRecordsPorPeriodo(range.ini, range.fim);
 }
-function computeKPIStatsFrom(recs){
+function computeComparativeStats(recs){
   const full = recs.filter(r=>r.tem_dados_completos);
+  const liderArr = computeLiderArr(recs);
+  const byUf = liderArr.filter(l=>l.uf).sort((a,b)=>b.uf-a.uf);
+  const byTempo = liderArr.filter(l=>l.tempo).sort((a,b)=>a.tempo-b.tempo);
+  const byExt = liderArr.filter(l=>l.ext).sort((a,b)=>b.ext-a.ext);
+  const byInc = liderArr.filter(l=>l.inc).sort((a,b)=>b.inc-a.inc);
+  const implArr = computeEquipeImplArr(recs);
+  const byUfh = implArr.filter(e=>e.ufh).sort((a,b)=>b.ufh-a.ufh);
+  const diaArr = computeDiaArr(recs);
+  const diaByUf = diaArr.filter(d=>d.uf).sort((a,b)=>b.uf-a.uf);
   return {
-    total: recs.length,
-    totalUF: sum(full.map(r=>r.uf)),
-    totalFios: sum(full.map(r=>r.fios)),
-    tMedio: avg(full.map(r=>r.tempo_procedimento_min)),
+    totalCirurgias: recs.length,
+    ufMedio: avg(full.map(r=>r.uf)),
+    tempoMedio: avg(full.map(r=>r.tempo_procedimento_min)),
     extMedio: avg(full.map(r=>r.tempo_extracao_min)),
     incMedio: avg(full.map(r=>r.tempo_incisao_min)),
     implMedio: avg(full.map(r=>r.tempo_implantacao_min)),
-    ufCir: avg(full.map(r=>r.uf)),
-    fiosCir: avg(full.map(r=>r.fios)),
-    ufHora: avg(full.map(r=>r.foliculos_por_hora)),
+    maisFoliculos: byUf[0]||null,
+    menosFoliculos: byUf.length? byUf[byUf.length-1] : null,
+    cirurgiaRapida: byTempo[0]||null,
+    cirurgiaLenta: byTempo.length? byTempo[byTempo.length-1] : null,
+    maiorExt: byExt[0]||null,
+    menorExt: byExt.length? byExt[byExt.length-1] : null,
+    maiorInc: byInc[0]||null,
+    menorInc: byInc.length? byInc[byInc.length-1] : null,
+    melhorImpl: byUfh[0]||null,
+    piorImpl: byUfh.length? byUfh[byUfh.length-1] : null,
+    melhorDia: diaByUf[0]||null,
+    piorDia: diaByUf.length? diaByUf[diaByUf.length-1] : null,
   };
 }
-function fmtDateBR(dateStr){
-  if(!dateStr) return '';
-  const [y,m,d] = dateStr.split('-');
-  return `${d}/${m}`;
+function fmtNum(v, digits){
+  if(v===null||v===undefined||isNaN(v)) return '—';
+  return digits!==undefined ? v.toLocaleString('pt-BR',{maximumFractionDigits:digits}) : v.toLocaleString('pt-BR');
 }
-function prevWeekLabel(){
-  const r = getPrevWeekRange();
-  if(!r) return '';
-  return `${fmtDateBR(r.ini)}–${fmtDateBR(r.fim)}`;
+function deltaCell(curr, prev, fmtFn){
+  fmtFn = fmtFn || (v=>fmtNum(v));
+  const hasCurr = curr!==null && curr!==undefined && !isNaN(curr);
+  const hasPrev = prev!==null && prev!==undefined && !isNaN(prev);
+  if(!hasCurr && !hasPrev) return '<span class="delta-flat">—</span>';
+  if(!hasPrev) return hasCurr && curr>0 ? '<span class="delta-up">▲ novo</span>' : '<span class="delta-flat">—</span>';
+  if(!hasCurr) return '<span class="delta-down">▼ zerou</span>';
+  const diff = curr-prev;
+  const pct = prev!==0 ? (diff/prev*100) : null;
+  const cls = diff>0.0001 ? 'delta-up' : (diff<-0.0001 ? 'delta-down' : 'delta-flat');
+  const arrow = diff>0.0001 ? '▲' : (diff<-0.0001 ? '▼' : '▬');
+  const sign = diff>0.0001 ? '+' : (diff<-0.0001 ? '-' : '');
+  const diffFmt = fmtFn(Math.abs(diff));
+  const pctStr = (pct!==null && isFinite(pct)) ? ` (${sign}${fmtNum(Math.abs(pct),1)}%)` : '';
+  return `<span class="${cls}">${arrow} ${sign}${diffFmt}${pctStr}</span>`;
 }
-function wowBadgeGeral(prevVal, fmtFn){
-  const label = prevWeekLabel();
-  if(prevVal===null||prevVal===undefined||isNaN(prevVal)||prevVal===0){
-    return `<div class="wow-badge">Sem. anterior (${label}): sem dados</div>`;
+function renderAnaliseComparativa(){
+  const el = document.getElementById('analiseComparativa');
+  if(!el) return;
+  const atual = getPeriodoAtualRange();
+  const prevRange = getPrevPeriodoRange();
+  if(!atual || !prevRange){ el.innerHTML = '<div class="card">Selecione um período para comparar.</div>'; return; }
+  const prevRecs = getPrevPeriodoRecords();
+  const cur = computeComparativeStats(filtered);
+  const prev = computeComparativeStats(prevRecs);
+
+  const labelAtual = fmtDateBR(atual.ini)+'–'+fmtDateBR(atual.fim);
+  const labelAnterior = fmtDateBR(prevRange.ini)+'–'+fmtDateBR(prevRange.fim);
+
+  function numRow(lbl, curVal, prevVal, fmtFn){
+    return `<tr><td>${lbl}</td><td>${fmtFn(curVal)}</td><td>${fmtFn(prevVal)}</td><td>${deltaCell(curVal, prevVal, fmtFn)}</td></tr>`;
   }
-  return `<div class="wow-badge">Sem. anterior (${label}): ${fmtFn(prevVal)}</div>`;
-}
-function wowBadgeLider(nome){
-  const label = prevWeekLabel();
-  if(!nome){
-    return `<div class="wow-badge">Sem. anterior (${label}): sem dados</div>`;
+  function liderRow(lbl, curEntry, prevEntry, field, fmtFn, nameField){
+    nameField = nameField || 'lider';
+    const curName = curEntry ? curEntry[nameField] : null;
+    const prevName = prevEntry ? prevEntry[nameField] : null;
+    const curVal = curEntry ? curEntry[field] : null;
+    const prevVal = prevEntry ? prevEntry[field] : null;
+    const curCell = curName ? `${curName} <span style="color:var(--muted);font-size:11.5px">(${fmtFn(curVal)})</span>` : '—';
+    const prevCell = prevName ? `${prevName} <span style="color:var(--muted);font-size:11.5px">(${fmtFn(prevVal)})</span>` : '—';
+    return `<tr><td>${lbl}</td><td>${curCell}</td><td>${prevCell}</td><td>${deltaCell(curVal, prevVal, fmtFn)}</td></tr>`;
   }
-  return `<div class="wow-badge">Sem. anterior (${label}): ${nome}</div>`;
+
+  const rows = [
+    numRow('Total de Cirurgias', cur.totalCirurgias, prev.totalCirurgias, v=>fmtNum(v)),
+    numRow('Média de Folículos / Cirurgia', cur.ufMedio, prev.ufMedio, v=>fmtNum(v)),
+    numRow('Tempo Médio de Cirurgia', cur.tempoMedio, prev.tempoMedio, fmtMin),
+    numRow('Tempo Médio de Extração', cur.extMedio, prev.extMedio, fmtMin),
+    numRow('Tempo Médio de Incisão', cur.incMedio, prev.incMedio, fmtMin),
+    numRow('Tempo Médio de Implantação', cur.implMedio, prev.implMedio, fmtMin),
+    liderRow('Líder — Mais Folículos', cur.maisFoliculos, prev.maisFoliculos, 'uf', v=>fmtNum(v)+' UF'),
+    liderRow('Líder — Menos Folículos', cur.menosFoliculos, prev.menosFoliculos, 'uf', v=>fmtNum(v)+' UF'),
+    liderRow('Líder — Cirurgia Mais Rápida', cur.cirurgiaRapida, prev.cirurgiaRapida, 'tempo', fmtMin),
+    liderRow('Líder — Cirurgia Mais Lenta', cur.cirurgiaLenta, prev.cirurgiaLenta, 'tempo', fmtMin),
+    liderRow('Líder — Maior Tempo de Extração', cur.maiorExt, prev.maiorExt, 'ext', fmtMin),
+    liderRow('Líder — Menor Tempo de Extração', cur.menorExt, prev.menorExt, 'ext', fmtMin),
+    liderRow('Líder — Maior Tempo de Incisão', cur.maiorInc, prev.maiorInc, 'inc', fmtMin),
+    liderRow('Líder — Menor Tempo de Incisão', cur.menorInc, prev.menorInc, 'inc', fmtMin),
+    liderRow('Melhor na Implantação', cur.melhorImpl, prev.melhorImpl, 'ufh', v=>fmtNum(v,0)+' UF/h', 'equipe'),
+    liderRow('Pior na Implantação', cur.piorImpl, prev.piorImpl, 'ufh', v=>fmtNum(v,0)+' UF/h', 'equipe'),
+    liderRow('Melhor Dia da Semana', cur.melhorDia, prev.melhorDia, 'uf', v=>fmtNum(v)+' UF', 'dia'),
+    liderRow('Pior Dia da Semana', cur.piorDia, prev.piorDia, 'uf', v=>fmtNum(v)+' UF', 'dia'),
+  ];
+
+  el.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <h3 style="margin:0">↔ Período Atual (${labelAtual}) vs Período Anterior (${labelAnterior})</h3>
+        <span style="font-size:11px;color:var(--muted)">Mesmo nº de dias (${prevRange.lengthDays})</span>
+      </div>
+      <div class="table-scroll" style="max-height:600px;overflow-y:auto">
+        <table class="comp-table"><thead><tr><th>Métrica</th><th>Período Atual</th><th>Período Anterior</th><th>Δ</th></tr></thead>
+        <tbody>${rows.join('')}</tbody></table>
+      </div>
+    </div>`;
 }
 
 // ---------- RENDER KPI ----------
@@ -585,20 +674,19 @@ function renderKPIs(){
   const fiosCir = avg(full.map(r=>r.fios));
   const ufHora = avg(full.map(r=>r.foliculos_por_hora));
 
-  const prevStats = computeKPIStatsFrom(getPrevWeekRecords());
   const kpis = [
-    {c:'k1', lbl:'Total de Cirurgias', val:filtered.length, sub:full.length+' com dados completos', prevVal:prevStats.total, prevFmt:v=>v.toLocaleString('pt-BR')},
-    {c:'k2', lbl:'Total de Folículos', val:totalUF.toLocaleString('pt-BR'), sub:'unidades foliculares (UF) · Média: '+(ufCir?ufCir.toLocaleString('pt-BR'):'—')+'/cirurgia', prevVal:prevStats.totalUF, prevFmt:v=>v.toLocaleString('pt-BR')},
-    {c:'k3', lbl:'Total de Fios', val:totalFios.toLocaleString('pt-BR'), sub:'fios extraídos · Média: '+(fiosCir?fiosCir.toLocaleString('pt-BR'):'—')+'/cirurgia', prevVal:prevStats.totalFios, prevFmt:v=>v.toLocaleString('pt-BR')},
-    {c:'k4', lbl:'Tempo Médio Cirurgia', val:fmtMin(tMedio), sub:'do início ao fim', prevVal:prevStats.tMedio, prevFmt:v=>fmtMin(v)},
-    {c:'k5', lbl:'Tempo Médio Extração', val:fmtMin(extMedio), sub:'fase de extração (FUE)', prevVal:prevStats.extMedio, prevFmt:v=>fmtMin(v)},
-    {c:'k6', lbl:'Tempo Médio Incisão', val:fmtMin(incMedio), sub:'fase de incisão', prevVal:prevStats.incMedio, prevFmt:v=>fmtMin(v)},
-    {c:'k9', lbl:'Tempo Médio Implantação', val:fmtMin(implMedio), sub:'do início da implantação ao fim', prevVal:prevStats.implMedio, prevFmt:v=>fmtMin(v)},
-    {c:'k7', lbl:'Folículos / Cirurgia', val:ufCir? ufCir.toLocaleString('pt-BR'):'—', sub:fiosCir? fiosCir.toLocaleString('pt-BR')+' fios/cirurgia':'', prevVal:prevStats.ufCir, prevFmt:v=>v.toLocaleString('pt-BR')},
-    {c:'k8', lbl:'Folículos / Hora', val:ufHora? ufHora.toLocaleString('pt-BR',{maximumFractionDigits:0}):'—', sub:'produtividade média', prevVal:prevStats.ufHora, prevFmt:v=>v.toLocaleString('pt-BR',{maximumFractionDigits:0})},
+    {c:'k1', lbl:'Total de Cirurgias', val:filtered.length, sub:full.length+' com dados completos'},
+    {c:'k2', lbl:'Total de Folículos', val:totalUF.toLocaleString('pt-BR'), sub:'unidades foliculares (UF) · Média: '+(ufCir?ufCir.toLocaleString('pt-BR'):'—')+'/cirurgia'},
+    {c:'k3', lbl:'Total de Fios', val:totalFios.toLocaleString('pt-BR'), sub:'fios extraídos · Média: '+(fiosCir?fiosCir.toLocaleString('pt-BR'):'—')+'/cirurgia'},
+    {c:'k4', lbl:'Tempo Médio Cirurgia', val:fmtMin(tMedio), sub:'do início ao fim'},
+    {c:'k5', lbl:'Tempo Médio Extração', val:fmtMin(extMedio), sub:'fase de extração (FUE)'},
+    {c:'k6', lbl:'Tempo Médio Incisão', val:fmtMin(incMedio), sub:'fase de incisão'},
+    {c:'k9', lbl:'Tempo Médio Implantação', val:fmtMin(implMedio), sub:'do início da implantação ao fim'},
+    {c:'k7', lbl:'Folículos / Cirurgia', val:ufCir? ufCir.toLocaleString('pt-BR'):'—', sub:fiosCir? fiosCir.toLocaleString('pt-BR')+' fios/cirurgia':''},
+    {c:'k8', lbl:'Folículos / Hora', val:ufHora? ufHora.toLocaleString('pt-BR',{maximumFractionDigits:0}):'—', sub:'produtividade média'},
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
-    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val">${k.val}</div><div class="sub">${k.sub}</div>${wowBadgeGeral(k.prevVal,k.prevFmt)}</div>
+    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val">${k.val}</div><div class="sub">${k.sub}</div></div>
   `).join('');
 }
 
@@ -683,9 +771,10 @@ function computeEquipeArr(){
 // Produtividade por pessoa NA ETAPA DE IMPLANTAÇÃO — usa o UF que a própria pessoa implantou
 // (papel de contagem por tracinhos) e a DURAÇÃO DA ETAPA DE IMPLANTAÇÃO (implantacao -> implantacao_fim),
 // nunca o UF total nem a duração total da cirurgia (que inclui extração + incisão + implantação).
-function computeEquipeImplArr(){
+function computeEquipeImplArr(recsParam){
+  const recs = recsParam || filtered;
   const map = {};
-  filtered.forEach(r=>{
+  recs.forEach(r=>{
     if(r.implantacao_uf_pessoa && r.tempo_implantacao_min){
       Object.entries(r.implantacao_uf_pessoa).forEach(([pessoa, ufPessoa])=>{
         if(LIDERES_EXCLUIR_IMPLANTACAO.includes(pessoa)) return;
@@ -703,9 +792,10 @@ function computeEquipeImplArr(){
   }).sort((a,b)=>(b.ufh||0)-(a.ufh||0));
 }
 
-function computeDiaArr(){
+function computeDiaArr(recsParam){
+  const recs = recsParam || filtered;
   const diaMap = {};
-  filtered.forEach(r=>{ (diaMap[r.dia_semana]=diaMap[r.dia_semana]||[]).push(r); });
+  recs.forEach(r=>{ (diaMap[r.dia_semana]=diaMap[r.dia_semana]||[]).push(r); });
   const diasOrdenados = ordemDias.filter(d=>diaMap[d]);
   return diasOrdenados.map(d=>{
     const rs = diaMap[d]; const full = rs.filter(r=>r.tem_dados_completos);
@@ -741,23 +831,18 @@ function renderLiderHighlights(liderArr){
   const byExt = liderArr.filter(l=>l.ext).sort((a,b)=>b.ext-a.ext);
   const byInc = liderArr.filter(l=>l.inc).sort((a,b)=>b.inc-a.inc);
   if(!byUf.length || !byTempo.length || !byExt.length || !byInc.length){ el.innerHTML=''; return; }
-  const prevLiderArr = computeLiderArr(getPrevWeekRecords());
-  const pByUf = prevLiderArr.filter(l=>l.uf).sort((a,b)=>b.uf-a.uf);
-  const pByTempo = prevLiderArr.filter(l=>l.tempo).sort((a,b)=>a.tempo-b.tempo);
-  const pByExt = prevLiderArr.filter(l=>l.ext).sort((a,b)=>b.ext-a.ext);
-  const pByInc = prevLiderArr.filter(l=>l.inc).sort((a,b)=>b.inc-a.inc);
   const cards = [
-    {c:'k2', lbl:'Mais folículos/cirurgia', val: byUf[0].lider, sub: byUf[0].uf.toLocaleString('pt-BR')+' UF em média', prevNome: pByUf.length? pByUf[0].lider : null},
-    {c:'k3', lbl:'Menos folículos/cirurgia', val: byUf[byUf.length-1].lider, sub: byUf[byUf.length-1].uf.toLocaleString('pt-BR')+' UF em média', prevNome: pByUf.length? pByUf[pByUf.length-1].lider : null},
-    {c:'k4', lbl:'Cirurgia mais rápida', val: byTempo[0].lider, sub: fmtMin(byTempo[0].tempo), prevNome: pByTempo.length? pByTempo[0].lider : null},
-    {c:'k5', lbl:'Cirurgia mais lenta', val: byTempo[byTempo.length-1].lider, sub: fmtMin(byTempo[byTempo.length-1].tempo), prevNome: pByTempo.length? pByTempo[pByTempo.length-1].lider : null},
-    {c:'k6', lbl:'Maior tempo de extração', val: byExt[0].lider, sub: fmtMin(byExt[0].ext), prevNome: pByExt.length? pByExt[0].lider : null},
-    {c:'k1', lbl:'Menor tempo de extração', val: byExt[byExt.length-1].lider, sub: fmtMin(byExt[byExt.length-1].ext), prevNome: pByExt.length? pByExt[pByExt.length-1].lider : null},
-    {c:'k7', lbl:'Maior tempo de incisão', val: byInc[0].lider, sub: fmtMin(byInc[0].inc), prevNome: pByInc.length? pByInc[0].lider : null},
-    {c:'k8', lbl:'Menor tempo de incisão', val: byInc[byInc.length-1].lider, sub: fmtMin(byInc[byInc.length-1].inc), prevNome: pByInc.length? pByInc[pByInc.length-1].lider : null},
+    {c:'k2', lbl:'Mais folículos/cirurgia', val: byUf[0].lider, sub: byUf[0].uf.toLocaleString('pt-BR')+' UF em média'},
+    {c:'k3', lbl:'Menos folículos/cirurgia', val: byUf[byUf.length-1].lider, sub: byUf[byUf.length-1].uf.toLocaleString('pt-BR')+' UF em média'},
+    {c:'k4', lbl:'Cirurgia mais rápida', val: byTempo[0].lider, sub: fmtMin(byTempo[0].tempo)},
+    {c:'k5', lbl:'Cirurgia mais lenta', val: byTempo[byTempo.length-1].lider, sub: fmtMin(byTempo[byTempo.length-1].tempo)},
+    {c:'k6', lbl:'Maior tempo de extração', val: byExt[0].lider, sub: fmtMin(byExt[0].ext)},
+    {c:'k1', lbl:'Menor tempo de extração', val: byExt[byExt.length-1].lider, sub: fmtMin(byExt[byExt.length-1].ext)},
+    {c:'k7', lbl:'Maior tempo de incisão', val: byInc[0].lider, sub: fmtMin(byInc[0].inc)},
+    {c:'k8', lbl:'Menor tempo de incisão', val: byInc[byInc.length-1].lider, sub: fmtMin(byInc[byInc.length-1].inc)},
   ];
   el.innerHTML = cards.map(k=>`
-    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val" style="font-size:19px">${k.val}</div><div class="sub">${k.sub}</div>${wowBadgeLider(k.prevNome)}</div>
+    <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val" style="font-size:19px">${k.val}</div><div class="sub">${k.sub}</div></div>
   `).join('');
 }
 
@@ -1115,6 +1200,7 @@ function applyFreeze(tableId, colIndexes){
 
 function renderAll(){
   updateHdrH();
+  renderAnaliseComparativa();
   renderKPIs();
   renderCapacidade();
   const liderArr = computeLiderArr();
