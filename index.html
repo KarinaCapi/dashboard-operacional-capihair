@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capi Hair — Painel de Cirurgias</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --panel-2:#fafbfc; --border:#e5e7eb; --text:#111827; --text-2:#6b7280;
+  --accent:#4f46e5; --accent-2:#6366f1; --shadow:0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg:0 10px 25px -5px rgba(0,0,0,.08), 0 8px 10px -6px rgba(0,0,0,.04);
+  --blue:#3b82f6; --green:#22c55e; --yellow:#eab308; --red:#ef4444; --purple:#a855f7;
+  --blue-bg:#eff6ff; --green-bg:#f0fdf4; --yellow-bg:#fefce8; --red-bg:#fef2f2; --purple-bg:#faf5ff;
+  --radius:14px;
+}
+body.dark{
+  --bg:#0f1115; --panel:#181b22; --panel-2:#1e222b; --border:#2a2f3a; --text:#f1f2f4; --text-2:#9aa0ac;
+  --accent:#818cf8; --accent-2:#a5b4fc; --shadow:0 1px 3px rgba(0,0,0,.4); --shadow-lg:0 10px 25px -5px rgba(0,0,0,.5);
+  --blue-bg:#132038; --green-bg:#0f2a1a; --yellow-bg:#2c2408; --red-bg:#2c1212; --purple-bg:#241234;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);transition:background .2s,color .2s;}
+a{color:inherit;}
+.app{display:none;flex-direction:column;min-height:100vh;}
+body.authed .app{display:flex;}
+#loginGate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+body.authed #loginGate{display:none;}
+.login-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:36px 32px;width:100%;max-width:340px;text-align:center;}
+.login-card .lg-logo{font-size:34px;margin-bottom:6px;}
+.login-card h2{margin:0 0 4px;font-size:17px;font-weight:800;}
+.login-card p{margin:0 0 20px;font-size:12px;color:var(--text-2);}
+.login-card input{width:100%;padding:10px 12px;margin-bottom:10px;border-radius:9px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;}
+.login-card input:focus{border-color:var(--accent);}
+.login-card button{width:100%;padding:10px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-weight:700;font-size:13px;cursor:pointer;margin-top:4px;}
+.login-error{display:none;color:var(--red);font-size:11.5px;margin-top:10px;}
+.topbar{display:flex;align-items:center;gap:16px;padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
+.brand{display:flex;flex-direction:column;margin-right:8px;}
+.brand .title{font-weight:700;font-size:16px;letter-spacing:-.2px;}
+.brand .sub{font-size:11px;color:var(--text-2);}
+.search-wrap{flex:1;max-width:420px;position:relative;}
+.search-wrap input{width:100%;padding:9px 12px 9px 34px;border-radius:10px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px;outline:none;}
+.search-wrap input:focus{border-color:var(--accent);}
+.search-wrap .icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.5;font-size:13px;}
+.top-actions{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.btn:hover{border-color:var(--accent);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.icon{padding:8px 9px;}
+.dropdown{position:relative;}
+.dropdown-menu{display:none;position:absolute;right:0;top:110%;background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);min-width:160px;overflow:hidden;z-index:60;}
+.dropdown-menu.show{display:block;}
+.dropdown-menu button{display:block;width:100%;text-align:left;padding:9px 12px;background:none;border:none;color:var(--text);font-size:12.5px;cursor:pointer;}
+.dropdown-menu button:hover{background:var(--panel-2);}
+.updated{font-size:11px;color:var(--text-2);margin-left:6px;white-space:nowrap;}
+.body-wrap{display:flex;flex:1;min-height:0;}
+.sidebar{width:260px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);padding:18px 14px;overflow-y:auto;overflow-x:hidden;transition:width .2s ease,padding .2s ease,opacity .15s ease;}
+.sidebar.collapsed{width:0;padding:18px 0;opacity:0;pointer-events:none;border-right:none;}
+.sidebar-reopen{display:none;align-items:center;justify-content:center;width:28px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);cursor:pointer;color:var(--text-2);font-size:13px;}
+.sidebar-reopen.show{display:flex;}
+.sidebar-reopen:hover{color:var(--accent);}
+.sidebar h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin:18px 0 8px;padding-left:2px;}
+.sidebar h4:first-child{margin-top:0;}
+.side-item{display:flex;justify-content:space-between;align-items:center;padding:8px 8px;border-radius:8px;font-size:12.5px;cursor:default;}
+.side-item:hover{background:var(--panel-2);}
+.side-item .n{font-weight:700;font-size:12px;padding:1px 7px;border-radius:20px;background:var(--panel-2);}
+.side-list{max-height:150px;overflow-y:auto;}
+.side-patient{padding:7px 8px;border-radius:8px;font-size:12px;}
+.side-patient:hover{background:var(--panel-2);}
+.side-patient .p-name{font-weight:600;}
+.side-patient .p-meta{color:var(--text-2);font-size:11px;}
+.main{flex:1;padding:20px 24px 40px;overflow-y:auto;min-width:0;}
+.kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:20px;}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
+.kpi .v{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+.kpi .l{font-size:11px;color:var(--text-2);margin-top:2px;font-weight:600;}
+.kpi.c-blue .v{color:var(--blue);} .kpi.c-green .v{color:var(--green);} .kpi.c-yellow .v{color:var(--yellow);}
+.kpi.c-red .v{color:var(--red);} .kpi.c-purple .v{color:var(--purple);} .kpi.c-ink .v{color:var(--accent);}
+/* Selo de percentual dentro do card de KPI (a pedido de Karina, 01/09/2026) — usado nos cards de "capacidade de venda
+   do mês" (formato "atingido/capacidade" no valor principal + este selo com o %). Cor por faixa: >=100% batida (verde),
+   >=70% em andamento (amarelo), <70% atrás da meta (vermelho) — mesmos limiares já usados em metaCellHtml(). */
+.kpi-pct{display:inline-block;margin-top:6px;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;}
+.kpi-pct.pct-hit{background:var(--green-bg);color:var(--green);}
+.kpi-pct.pct-warn{background:var(--yellow-bg);color:#a16207;}
+.kpi-pct.pct-miss{background:var(--red-bg);color:var(--red);}
+.tabs{display:flex;gap:4px;background:var(--panel-2);padding:4px;border-radius:10px;width:fit-content;margin-bottom:16px;border:1px solid var(--border);}
+.tab{padding:7px 14px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--text-2);}
+.tab.active{background:var(--panel);color:var(--text);box-shadow:var(--shadow);}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;margin-bottom:20px;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.panel-head h3{font-size:14px;margin:0;font-weight:700;}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.filters select{padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:12px;}
+.view-toggle{display:flex;gap:4px;margin-left:auto;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:3px;}
+.view-toggle button{border:none;background:none;color:var(--text-2);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer;}
+.view-toggle button.active{background:var(--panel);color:var(--text);box-shadow:var(--shadow);}
+.day-group{margin-bottom:18px;}
+.day-title{display:flex;align-items:center;gap:10px;font-size:12.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed var(--border);}
+.day-title .today-flag{background:var(--accent);color:#fff;padding:1px 8px;border-radius:20px;font-size:10px;text-transform:none;letter-spacing:0;}
+.cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+.card{border:1px solid var(--border);border-radius:12px;padding:12px 13px;background:var(--panel-2);position:relative;overflow:hidden;}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;}
+.card.st-agendado::before{background:var(--blue);} .card.st-confirmado::before{background:var(--green);}
+.card.st-reagendado::before{background:var(--yellow);} .card.st-cancelado::before{background:var(--red);}
+.card.st-prioridade::before{background:var(--purple);}
+.card .name{font-weight:700;font-size:13px;margin-bottom:5px;padding-left:6px;}
+.card .row2{font-size:11.5px;color:var(--text-2);padding-left:6px;line-height:1.6;}
+.card .chip{display:inline-block;margin-top:7px;margin-left:6px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+.chip.st-agendado{background:var(--blue-bg);color:var(--blue);} .chip.st-confirmado{background:var(--green-bg);color:var(--green);}
+.chip.st-reagendado{background:var(--yellow-bg);color:#a16207;} .chip.st-cancelado{background:var(--red-bg);color:var(--red);}
+.chip.st-prioridade{background:var(--purple-bg);color:var(--purple);}
+.empty-note{color:var(--text-2);font-size:12px;padding:10px 6px;}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.chart-box{background:var(--panel-2);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.chart-box h4{margin:0 0 10px;font-size:12.5px;font-weight:700;color:var(--text-2);}
+.chart-box canvas{max-height:230px;}
+.heatmap-wrap{display:flex;flex-direction:column;gap:8px;max-width:none;}
+.heatmap-header{display:grid;grid-template-columns:78px repeat(6,1fr) 72px 100px;gap:8px;}
+.heatmap-header .hh{font-size:12px;font-weight:700;color:var(--text-2);text-align:center;text-transform:uppercase;letter-spacing:.03em;padding-bottom:2px;}
+.heatmap-header .hh.hh-cutoff{color:var(--accent);}
+.hh-cutoff .cutoff-badge{display:inline-flex;align-items:center;justify-content:center;margin-left:3px;font-size:9px;font-weight:800;background:var(--accent);color:#fff;border-radius:5px;padding:1px 4px;letter-spacing:0;text-transform:none;vertical-align:middle;}
+.heat-cell.cut-line{box-shadow:inset 3px 0 0 var(--accent);}
+.heatmap-row{display:grid;grid-template-columns:78px repeat(6,1fr) 72px 100px;gap:8px;padding:2px;border-radius:12px;}
+.week-occ{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60px;border-radius:10px;background:var(--panel-2);font-weight:800;font-size:15px;line-height:1.1;}
+.week-occ .pct-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.85;margin-top:2px;}
+.week-occ.occ-high{background:var(--green-bg);color:var(--green);}
+.week-occ.occ-mid{background:var(--yellow-bg);color:#a16207;}
+.week-occ.occ-low{background:var(--red-bg);color:var(--red);}
+.week-meta{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60px;border-radius:10px;background:var(--panel-2);line-height:1.15;text-align:center;padding:2px 4px;}
+.week-meta .meta-line{font-size:12px;font-weight:800;}
+.week-meta .meta-sub{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;opacity:.85;margin-top:2px;}
+.week-meta.meta-hit{background:var(--green-bg);color:var(--green);}
+.week-meta.meta-warn{background:var(--yellow-bg);color:#a16207;}
+.week-meta.meta-miss{background:var(--red-bg);color:var(--red);}
+.week-meta.meta-na{background:var(--panel-2);color:var(--text-2);}
+.heatmap-row.current-week{outline:2px solid var(--accent);}
+.heatmap-row.next-week{outline:2px dashed var(--accent-2);}
+.week-label{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text-2);background:var(--panel-2);border-radius:10px;line-height:1.2;text-align:center;height:60px;}
+.week-label .tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.85;}
+.heatmap-row.current-week .week-label{background:var(--accent);color:#fff;}
+.heatmap-row.next-week .week-label{background:var(--accent-2);color:#fff;}
+.heat-cell{position:relative;height:60px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;font-weight:700;gap:2px;}
+.heat-cell.blank{background:transparent;}
+/* Selo de cancelamento (a pedido de Karina, 01/09/2026): sinaliza em vermelho, com asterisco, quando uma ou mais
+   cirurgias já contabilizadas naquele dia foram canceladas (vaga liberada após a contagem inicial da semana). */
+.cancel-badge{position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;line-height:1;padding:3px 5px;border-radius:9px;border:2px solid var(--panel,#fff);box-shadow:0 1px 4px rgba(0,0,0,.4);letter-spacing:.01em;z-index:2;}
+.heat-cell .d{font-size:19px;line-height:1.1;}
+.heat-cell .c{font-size:11px;font-weight:600;opacity:.85;line-height:1.1;}
+.heat-cell.h0{background:var(--red);color:#fff;}
+.heat-cell.h1{background:var(--yellow);color:#111827;}
+.heat-cell.h2{background:var(--blue);color:#fff;}
+.heat-cell.h3{background:var(--green);color:#fff;}
+.heat-cell.spill{outline:2px dashed rgba(255,255,255,.6);outline-offset:-4px;}
+.heat-cell.spill .d{font-size:14px;}
+.heat-cell.s-green{background:var(--green);color:#fff;}
+.heat-cell.s-yellow{background:var(--yellow);color:#111827;}
+.heat-cell.s-red{background:var(--red);color:#fff;}
+.heat-cell.s-future{background:transparent;border:1px dashed var(--border);color:var(--text-2);}
+.sales-missing{font-size:11px;color:var(--red);font-weight:600;}
+.sales-ok{font-size:11px;color:var(--green);font-weight:600;}
+.branch-pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:700;margin-right:4px;}
+.branch-pill.ok{background:var(--green-bg);color:var(--green);}
+.branch-pill.miss{background:var(--red-bg);color:var(--red);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:9px 10px;color:var(--text-2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.badge-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text-2);margin-top:10px;}
+.badge-legend span{display:inline-flex;align-items:center;gap:5px;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.footer-note{font-size:11px;color:var(--text-2);text-align:center;padding:18px 0 6px;}
+::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;}
+@media print{.sidebar,.topbar .top-actions,.filters,.view-toggle{display:none!important;}}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(4,1fr);} .charts-grid{grid-template-columns:1fr;}}
+@media (max-width:800px){.sidebar{display:none;} .kpis{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div id="loginGate">
+  <div class="login-card">
+    <div class="lg-logo">🗓️</div>
+    <h2>TC Botafogo — Acesso restrito</h2>
+    <p>Capi Hair · Agenda executiva de cirurgias</p>
+    <form id="loginForm">
+      <input type="text" id="loginUser" placeholder="Usuário" autocomplete="username" required>
+      <input type="password" id="loginPass" placeholder="Senha" autocomplete="current-password" required>
+      <button type="submit">Entrar</button>
+      <div class="login-error" id="loginError">Usuário ou senha incorretos.</div>
+    </form>
+  </div>
+</div>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="title">🗓️ Capi Hair — Painel de Cirurgias</div>
+      <div class="sub">Botafogo · Barra · Goiânia — agenda cirúrgica (mês atual + próximo)</div>
+    </div>
+    <div class="search-wrap">
+      <span class="icon">🔍</span>
+      <input id="searchInput" placeholder="Buscar paciente, médico, hospital, procedimento ou data...">
+    </div>
+    <div class="top-actions">
+      <span class="updated" id="updatedLabel"></span>
+      <div class="dropdown">
+        <button class="btn icon" id="exportBtn">⬇ Exportar</button>
+        <div class="dropdown-menu" id="exportMenu">
+          <button onclick="exportCSV()">Exportar CSV</button>
+          <button onclick="exportExcel()">Exportar Excel</button>
+          <button onclick="window.print()">Exportar / Imprimir PDF</button>
+          <button onclick="exportPNG()">Exportar Imagem PNG</button>
+        </div>
+      </div>
+      <button class="btn icon" id="refreshBtn" title="Buscar a versão mais recente publicada">🔄 Atualizar</button>
+      <button class="btn icon" id="sidebarToggle" title="Ocultar/mostrar painel lateral">◀ Painel</button>
+      <button class="btn icon" id="themeBtn">🌙</button>
+      <button class="btn icon" id="logoutBtn" title="Sair">🔒 Sair</button>
+    </div>
+  </div>
+
+  <div class="body-wrap">
+    <div class="sidebar-reopen" id="sidebarReopen" title="Mostrar painel lateral">▶</div>
+    <div class="sidebar" id="sidebarEl">
+      <h4>Painel rápido</h4>
+      <div class="side-item"><span>📌 Cirurgias hoje</span><span class="n" id="sideToday">0</span></div>
+      <div class="side-item"><span>➡️ Amanhã</span><span class="n" id="sideTomorrow">0</span></div>
+      <div class="side-item"><span>⏱ Próximas 48h</span><span class="n" id="side48">0</span></div>
+      <div class="side-item"><span>❓ Sem confirmação</span><span class="n" id="sidePending">0</span></div>
+      <div class="side-item"><span>🚫 Cancel. recentes</span><span class="n" id="sideCancel">0</span></div>
+
+      <h4>Hoje (14/09)</h4>
+      <div class="side-list" id="listToday"></div>
+
+      <h4>Amanhã (15/09)</h4>
+      <div class="side-list" id="listTomorrow"></div>
+
+      <h4>Últimas alterações</h4>
+      <div class="side-list" id="listChanges"></div>
+
+      <h4>Equipe (siglas)</h4>
+      <div style="font-size:11px;color:var(--text-2);line-height:1.9;padding-left:2px;">
+        JP · JM · A · F · JK · L · W · Mayara · Fabi — siglas registradas no grupo (não identificadas por nome completo)
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="kpis" id="kpiRow"></div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="agenda">Agenda</div>
+        <div class="tab" data-tab="indicadores">Capi Hair</div>
+        <div class="tab" data-tab="vendas">Volume de Vendas</div>
+        <div class="tab" data-tab="historico">Histórico</div>
+        <div class="tab" data-tab="barra">TG Barra</div>
+        <div class="tab" data-tab="goiania">TG Goiânia</div>
+      </div>
+
+      <div id="tab-agenda">
+        <div class="panel">
+          <div class="filters">
+            <select id="fHospital"><option value="">Unidade (todas)</option></select>
+            <select id="fStaff"><option value="">Médico/Equipe (todos)</option></select>
+            <select id="fStatus"><option value="">Status (todos)</option></select>
+            <select id="fProc"><option value="">Procedimento (todos)</option></select>
+            <div class="view-toggle" id="viewToggle">
+              <button data-v="dia" class="">Dia</button>
+              <button data-v="semana" class="">Semana</button>
+              <button data-v="2semanas" class="active">2 Semanas</button>
+              <button data-v="mes">Mês</button>
+            </div>
+          </div>
+          <div id="agendaContainer"></div>
+        </div>
+      </div>
+
+      <div id="tab-indicadores" style="display:none;">
+        <div class="panel" id="julyHeatmapPanel" style="display:none;">
+          <div class="panel-head"><h3>Ocupação por semana (S1–S5) — capacidade de 3 cirurgias/dia</h3></div>
+          <div id="heatmap"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias</span>
+            <span><span class="dot" style="background:var(--yellow)"></span>Amarelo — 1 cirurgia</span>
+            <span><span class="dot" style="background:var(--blue)"></span>Azul — 2 cirurgias</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 3 cirurgias (lotado)</span>
+            <span><span class="dot" style="border:2px dashed var(--text-2);background:transparent"></span>Borda tracejada — dia já é de agosto, mostrado aqui para completar a última semana de julho</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Considerações para setembro/2026</h3></div>
+          <div class="empty-note" style="font-size:13px;line-height:1.6;">
+            <strong>O que muda automaticamente:</strong> assim que a data de hoje (TODAY) entrar em setembro/2026, a rotina de verificação passa a ler o grupo de WhatsApp "AGENDA TC BOTAFOGO SETEMBRO" (parando de verificar "AGENDA TC BOTAFOGO AGOSTO", que ficará congelado a partir daí, no mesmo padrão já aplicado a julho em 14/08/2026). Um novo array <code>surgeriesSetembro</code> e um heatmap de ocupação dedicado para setembro serão criados automaticamente na primeira execução de setembro, seguindo a mesma estrutura de agosto (metas de ocupação semanal com corte às terças-feiras).<br><br>
+            <strong>Pendência que deve ser resolvida com a virada:</strong> os pacientes de reparo <strong>Felipe Cimino</strong> (id 1027) e <strong>Rodolpho Costa</strong> (id 1071) estão com status "Reagendado" e permanecem fisicamente no dia 24/08 do array de agosto apenas para histórico/auditoria, porque as mensagens originais não trouxeram uma data exata de remarcação. Assim que Karina ou os grupos de agenda confirmarem o novo dia de cada um, os registros deverão ser movidos para a data/mês correto. Desde 24/08/2026 10:15 esses 2 registros têm o campo <code>activeCount:false</code>, então já NÃO contam mais como cirurgia ativa no heatmap/KPIs do dia 24/08 (que mostra corretamente 2 cirurgias ativas — Gabriel Paiva e Romulo Leite); eles continuam visíveis apenas nos cartões da Agenda e no Histórico, para não perder o rastro do caso.<br><br>
+            <strong>Volume de Vendas:</strong> a meta diária (6 vendas/dia: 3 Botafogo + 1 Barra + 2 Goiânia, meta de Goiânia alterada de 1 para 2 em 18/08/2026 a pedido de Karina) e o mapeamento closer → filial continuam os mesmos em setembro; o heatmap de vendas de setembro começa a ser populado normalmente a partir dos relatórios do grupo "Closeres" (que não muda na virada de mês, ao contrário dos grupos de agenda cirúrgica).
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação agosto — mês completo (S1–S5) — capacidade de 3 cirurgias/dia</h3></div>
+          <div id="heatmapAgosto"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias</span>
+            <span><span class="dot" style="background:var(--yellow)"></span>Amarelo — 1 cirurgia</span>
+            <span><span class="dot" style="background:var(--blue)"></span>Azul — 2 cirurgias</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 3 cirurgias (lotado)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC BOTAFOGO AGOSTO" · repostagem completa mais recente: 27/08 18:26 (João Pedro Closer Capi Hair) · Contagem calculada em tempo real a partir dos dados reais por paciente abaixo (não é mais uma contagem manual)</div>
+          <div class="empty-note">Coluna "Meta": semana atual 100% (18) · próxima semana 75% (14) · semanas seguintes 50% (9), ciclo repetindo a cada 3 semanas. Desde 14/08/2026 a virada de semana para esta meta acontece toda <strong>terça-feira</strong> (não mais segunda) — a segunda-feira ainda conta como parte do ciclo da semana anterior.</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação setembro — mês completo (S1–S5) — capacidade de 3 cirurgias/dia</h3></div>
+          <div id="heatmapSetembro"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias</span>
+            <span><span class="dot" style="background:var(--yellow)"></span>Amarelo — 1 cirurgia</span>
+            <span><span class="dot" style="background:var(--blue)"></span>Azul — 2 cirurgias</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 3 cirurgias (lotado)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC SETEMBRO BOTAFOGO" · repostagem completa mais recente: 08/09/2026 10:47 (Assucena Closer Capi Hair, legenda "Paciente do dia 09 entrou dia 15 pois só consegue pagar nessa data") · Contagem calculada em tempo real a partir dos dados reais por paciente abaixo (não é mais uma contagem manual).</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Cirurgias de Agosto — dados reais do grupo (48 registros)</h3></div>
+          <table>
+            <thead><tr><th>Data</th><th>Paciente</th><th>Procedimento</th><th>Equipe</th><th>Valor</th><th>Status</th></tr></thead>
+            <tbody id="agostoListBody"></tbody>
+          </table>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-box"><h4>Cirurgias por dia (mês)</h4><canvas id="chartDia"></canvas></div>
+          <div class="chart-box"><h4>Cirurgias por médico/equipe</h4><canvas id="chartMedico"></canvas></div>
+          <div class="chart-box"><h4>Cirurgias por procedimento</h4><canvas id="chartProc"></canvas></div>
+          <div class="chart-box"><h4>Cirurgias por status</h4><canvas id="chartStatus"></canvas></div>
+          <div class="chart-box"><h4>Cirurgias por unidade/hospital</h4><canvas id="chartHospital"></canvas></div>
+          <div class="chart-box"><h4>Semanal vs diário (volume)</h4><canvas id="chartSemana"></canvas></div>
+        </div>
+      </div>
+
+      <div id="tab-vendas" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Meta diária: 6 vendas (3 Botafogo · 1 Barra · 2 Goiânia)</h3></div>
+          <div class="empty-note" style="margin-bottom:0;">Capacidade mensal = meta diária × dias úteis (seg-sáb) de cada mês. Os cards abaixo mostram, por filial e no total, o formato "atingido/capacidade" com o percentual batido — separados por mês (Agosto e Setembro).</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Meta de vendas — setembro/2026</h3></div>
+          <div class="kpis" id="vendasKpiRowSetembro" style="margin-bottom:0;"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Heatmap de vendas — setembro/2026</h3></div>
+          <div id="vendasHeatmapSetembro"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--green)"></span>Verde — meta batida (Botafogo 3 + Barra 1 + Goiânia 2)</span>
+            <span><span class="dot" style="background:var(--yellow)"></span>Amarelo — parcial (alguma venda, meta não completa)</span>
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — nenhuma venda no dia</span>
+            <span><span class="dot" style="border:2px dashed var(--border);background:transparent"></span>Tracejado — dia futuro / ainda sem dado</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "Closeres" (relatórios diários de cada closer) · domingo sem célula (sem expediente comercial, mesmo critério do heatmap de cirurgias)</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Detalhamento diário — Setembro — o que falta por filial</h3></div>
+          <table>
+            <thead><tr><th>Data</th><th>Botafogo</th><th>Barra</th><th>Goiânia</th><th>Total</th><th>Status</th><th>Faltam</th></tr></thead>
+            <tbody id="vendasDetailBodySetembro"></tbody>
+          </table>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-box"><h4>Vendas por closer — Setembro/2026</h4><canvas id="chartCloserSetembro"></canvas></div>
+          <div class="chart-box"><h4>Vendas por filial — Setembro/2026</h4><canvas id="chartFilialSetembro"></canvas></div>
+          <div class="chart-box" style="grid-column:1/-1;"><h4>Evolução diária — Setembro — vendas x meta (6/dia)</h4><canvas id="chartVendasDiaSetembro"></canvas></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Meta de vendas — agosto/2026</h3></div>
+          <div class="kpis" id="vendasKpiRowAgosto" style="margin-bottom:0;"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Heatmap de vendas — agosto/2026</h3></div>
+          <div id="vendasHeatmapAgosto"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--green)"></span>Verde — meta batida (Botafogo 3 + Barra 1 + Goiânia 2)</span>
+            <span><span class="dot" style="background:var(--yellow)"></span>Amarelo — parcial (alguma venda, meta não completa)</span>
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — nenhuma venda no dia</span>
+            <span><span class="dot" style="border:2px dashed var(--border);background:transparent"></span>Tracejado — dia futuro / ainda sem dado</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "Closeres" (relatórios diários de cada closer) · domingo sem célula (sem expediente comercial, mesmo critério do heatmap de cirurgias)</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Detalhamento diário — Agosto — o que falta por filial</h3></div>
+          <table>
+            <thead><tr><th>Data</th><th>Botafogo</th><th>Barra</th><th>Goiânia</th><th>Total</th><th>Status</th><th>Faltam</th></tr></thead>
+            <tbody id="vendasDetailBodyAgosto"></tbody>
+          </table>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-box"><h4>Vendas por closer — Agosto/2026</h4><canvas id="chartCloserAgosto"></canvas></div>
+          <div class="chart-box"><h4>Vendas por filial — Agosto/2026</h4><canvas id="chartFilialAgosto"></canvas></div>
+          <div class="chart-box" style="grid-column:1/-1;"><h4>Evolução diária — Agosto — vendas x meta (6/dia)</h4><canvas id="chartVendasDiaAgosto"></canvas></div>
+        </div>
+
+        <div class="empty-note">Relatórios extraídos do grupo "Closeres" desde 01/08/2026. Mapeamento closer → filial: João Pedro e Assucena = Botafogo · Fabi = Barra · Tayany e Luana = Goiânia. Esta aba conta somente vendas de <strong>transplante capilar</strong> — vendas de tratamento (ex.: Jhonathan Geyson e Wellison em 04/08) ficam registradas no relatório para histórico, mas não entram na meta diária, no heatmap, nos KPIs nem nos gráficos. Nenhum relatório de João Pedro encontrado em 01/08 e 03/08 — Botafogo nesses dias considera só Assucena. Setembro é populado normalmente a partir dos relatórios do grupo "Closeres" à medida que o mês avança (sem leitura antecipada, ao contrário dos grupos de agenda cirúrgica).</div>
+      </div>
+
+      <div id="tab-historico" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Histórico de alterações do grupo</h3></div>
+          <table>
+            <thead><tr><th>Data/Hora</th><th>Autor</th><th>Tipo</th><th>Mensagem original</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-barra" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Indicadores — TG Barra</h3></div>
+          <div class="kpis" id="kpiRowBarra"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação agosto — TG Barra — mês completo (S1–S6) — capacidade de 1 cirurgia/dia (sala única) — meta semanal 6/6</h3></div>
+          <div id="heatmapBarraAgosto"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias (sala livre)</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 1 cirurgia (sala ocupada, capacidade máxima)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC BARRA" · repostagem completa integral mais recente (Agosto): 26/08/2026 10:57 (Fabi Mazzoleni, legenda "Consertando nome" — mesmo conteúdo da repostagem de 07:19, só corrigindo grafia do nome no dia 28/08) · Contagem calculada em tempo real a partir dos dados reais por paciente na tabela abaixo.</div>
+          <div class="empty-note">Coluna "Meta": semana atual 100% (6) · próxima semana 75% (5) · semanas seguintes 50% (3), ciclo repetindo a cada 3 semanas. Corte semanal às terças-feiras (mesmo critério do heatmap de Botafogo).</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação setembro — TG Barra — mês completo (S1–S5) — capacidade de 1 cirurgia/dia (sala única) — meta semanal 6/6</h3></div>
+          <div id="heatmapBarraSetembro"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias (sala livre)</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 1 cirurgia (sala ocupada, capacidade máxima)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC BARRA" · repostagem completa integral mais recente (Setembro): 11/09/2026 13:03 (Fabi Mazzoleni, legenda "Colocando informações de cirurgias pagas") · Contagem calculada em tempo real a partir dos dados reais por paciente na tabela abaixo.</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação outubro — TG Barra — leitura antecipada, mês parcial — capacidade de 1 cirurgia/dia (sala única) — meta semanal 6/6</h3></div>
+          <div id="heatmapBarraOutubro"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias (sala livre)</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 1 cirurgia (sala ocupada, capacidade máxima)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC BARRA" · repostagem completa integral mais recente (Outubro): 08/09/2026 11:23 (Fabi Mazzoleni, editada) · leitura antecipada do mês seguinte (TODAY ainda em Setembro/2026), mesmo padrão já usado para Setembro/Botafogo · Contagem calculada em tempo real a partir dos dados reais por paciente na tabela abaixo.</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Cirurgias TG Barra — Agosto + Setembro + Outubro — dados reais do grupo</h3></div>
+          <table>
+            <thead><tr><th>Data</th><th>Paciente</th><th>Procedimento</th><th>Equipe</th><th>Valor</th><th>Status</th></tr></thead>
+            <tbody id="barraListBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-goiania" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h3>Indicadores — TG Goiânia</h3></div>
+          <div class="kpis" id="kpiRowGoiania"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação agosto — TG Goiânia — mês completo (S1–S6) — capacidade de 1 cirurgia/dia (sala única) — meta semanal 6/6</h3></div>
+          <div id="heatmapGoianiaAgosto"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias (sala livre)</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 1 cirurgia (sala ocupada, capacidade máxima)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC GOIÂNIA" · repostagem completa integral mais recente (Agosto): 28/08/2026 09:16 (Luana Melo, legenda "Colocando informação de cirurgia paga") · Contagem calculada em tempo real a partir dos dados reais por paciente na tabela abaixo.</div>
+          <div class="empty-note">Coluna "Meta": semana atual 100% (6) · próxima semana 75% (5) · semanas seguintes 50% (3), ciclo repetindo a cada 3 semanas. Corte semanal às terças-feiras (mesmo critério do heatmap de Botafogo).</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação setembro — TG Goiânia — mês completo (S1–S5) — capacidade de 1 cirurgia/dia (sala única) — meta semanal 6/6</h3></div>
+          <div id="heatmapGoianiaSetembro"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias (sala livre)</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 1 cirurgia (sala ocupada, capacidade máxima)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC GOIÂNIA" · repostagem completa integral mais recente (Setembro): 03/09/2026 14:48 (Luana Melo, legenda "Incluindo cirurgia 30/09") · Contagem calculada em tempo real a partir dos dados reais por paciente na tabela abaixo.</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Ocupação outubro — TG Goiânia — leitura antecipada, mês parcial — capacidade de 1 cirurgia/dia (sala única) — meta semanal 6/6</h3></div>
+          <div id="heatmapGoianiaOutubro"></div>
+          <div class="badge-legend">
+            <span><span class="dot" style="background:var(--red)"></span>Vermelho — 0 cirurgias (sala livre)</span>
+            <span><span class="dot" style="background:var(--green)"></span>Verde — 1 cirurgia (sala ocupada, capacidade máxima)</span>
+          </div>
+          <div class="empty-note">Fonte: grupo de WhatsApp "AGENDA TC GOIÂNIA" · repostagem completa integral mais recente (Outubro): 09/09/2026 17:24 (Luana Melo, editada, legenda "Incluindo cirurgia 17/10") · leitura antecipada do mês seguinte (TODAY ainda em Setembro/2026), mesmo padrão já usado para Outubro/TG Barra · Contagem calculada em tempo real a partir dos dados reais por paciente na tabela abaixo.</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Cirurgias TG Goiânia — Agosto + Setembro + Outubro — dados reais do grupo</h3></div>
+          <table>
+            <thead><tr><th>Data</th><th>Paciente</th><th>Procedimento</th><th>Equipe</th><th>Valor</th><th>Status</th></tr></thead>
+            <tbody id="goianiaListBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------- AUTENTICAÇÃO (proteção simples por senha) ----------------
+(function(){
+  const AUTH_USER = "agenda";
+  const AUTH_PASS = "260820";
+  function setAuthed(v){
+    document.body.classList.toggle('authed', v);
+  }
+  if(localStorage.getItem('tc-auth')==='ok'){ setAuthed(true); }
+  document.getElementById('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    if(u===AUTH_USER && p===AUTH_PASS){
+      localStorage.setItem('tc-auth','ok');
+      document.getElementById('loginError').style.display='none';
+      setAuthed(true);
+    } else {
+      document.getElementById('loginError').style.display='block';
+    }
+  });
+})();
+
+// ---------------- DATA ----------------
+const LAST_UPDATE = "15/09/2026 (correção solicitada por Karina no chat — Volume de Vendas / Closeres / Goiânia). Karina pediu para revisar: 'em goiania foram 2 vendas ontem. Teve um relatório de Luana enviado retroativo do dia 11/09'. Reaberto o grupo Closeres via Claude in Chrome (carregou normalmente). CORREÇÃO 1: o registro de Silvio Siqueira (Luana Melo/Goiânia, R$13.900), até então datado 2026-09-14 (data de envio, sem indicação de reenvio retroativo detectada nas execuções anteriores), foi CORRIGIDO para 2026-09-11 — confirmado via DM direta entre Karina e Luana (+55 62 9221-6439, conversa 'Ontem'): Karina pediu 'o relatório diário no grupo dos closeres de sexta feira dessa venda sua' citando 'Sinal de 1k do Silvio Siqueira, Total 13.900 em 12X, Cirurgia 14/12, Luana e Waleska' — confirma que a venda é de sexta-feira 11/09/2026, não do dia de envio (14/09). CORREÇÃO 2 / INCLUSÃO: releitura do grupo Closeres revelou um 2º relatório de Luana Melo não capturado antes, enviado ontem (14/09) às 18:59 — 'Relatório Luana GO 14/09/26', Ivan (individual) fechado R$13.900 (sinal R$1.000 pix + restante em 6x), cirurgia agendada para 20/10, transplante — data do texto bate com a data de envio, sem divergência. Juntos, Silvio (11/09) e Ivan (14/09) confirmam as '2 vendas' que Karina mencionou. INCLUSÃO ADICIONAL: aproveitando a releitura, também foi capturado o relatório de João Pedro Closer Capi Hair de ontem (14/09) 20:19, que ainda não estava lançado — 1 fechamento transplante (Arthur, indicação Luana, R$15.800) + 2 fechamentos de tratamento (Joacir e Marcelo, não contabilizados em closedTransplante). BOTAFOGO SETEMBRO, TG BARRA e TG GOIÂNIA (agenda cirúrgica): não verificados nesta execução — escopo limitado à correção pontual pedida por Karina no array salesReports; recomenda-se reverificação completa das 4 fontes na próxima execução agendada. TODAY mantido em 2026-09-14 (não avançado, já que não houve verificação completa das agendas). PUBLICAÇÃO NO GITHUB PAGES NÃO CONCLUÍDA NESTA EXECUÇÃO — a ferramenta de shell/terminal desta sessão (mcp__workspace__bash) permaneceu completamente indisponível durante toda a execução, mesmo erro de infraestrutura já documentado em execuções anteriores ('Uma atualização do Windows lançada em 8 de setembro impede que o workspace do Claude acesse seus arquivos', falha de montagem RPC Plan9), confirmado em 6 tentativas consecutivas nesta sessão, com instrução explícita da própria plataforma para não insistir. Isso bloqueia tanto o 'git push' de publicação quanto a validação de sintaxe via Node (node --check/new Function) que normalmente precede qualquer publicação neste projeto. O arquivo local foi editado com as ferramentas Read/Grep/Edit (sem acesso a bash), de forma cautelosa e cirúrgica (1 correção de data + 2 inclusões em salesReports, nenhum array de cirurgia alterado), mas SEM a validação automática de sintaxe que normalmente confirma que o arquivo continua parseável antes de publicar. index.html reconstruído manualmente (Read/Write/Edit, sem bash) para espelhar exatamente o agenda_tc_botafogo_julho.html, a pedido de Karina, para publicação manual dela no GitHub. AÇÃO NECESSÁRIA: assim que a ferramenta de shell desta sessão (ou de uma execução futura) voltar a funcionar, validar a sintaxe do arquivo e publicar via git push (processo já documentado, token em github_token.txt) nas próximas atualizações.";
+
+const LAST_UPDATE_TS = "15/09/2026"; // Exibido no topo do dashboard — somente data e hora (o texto completo acima fica só para auditoria/histórico)
+const TODAY = "2026-09-14";
+
+const surgeries = [
+{id:1,date:"2026-07-01",patient:"Fabiano Fernandes Da Rocha",value:null,payment:"",staff:[],procedure:"Reparo",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Reparo sem custo e sem tratamento"},
+{id:2,date:"2026-07-01",patient:"Bruno Rosado Tristão Dias",value:11000,payment:"Pix",staff:["JP","JM"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:3,date:"2026-07-01",patient:"Marcio Alexandre",value:12000,payment:"Pix",staff:["JM","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:4,date:"2026-07-02",patient:"Thiago de Carvalho Daflon",value:13000,payment:"10x",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original"},
+{id:5,date:"2026-07-02",patient:"Arnaldo (Capi Hair)",value:null,payment:"",staff:[],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Procedimento interno da equipe"},
+{id:6,date:"2026-07-03",patient:"Leonardo Félix",value:21000,payment:"18x",staff:["W","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:7,date:"2026-07-03",patient:"Leonardo Pereira de Souza",value:13900,payment:"10x",staff:["JP","JM"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:8,date:"2026-07-03",patient:"João Marcos Warol",value:21000,payment:"Pix",staff:["JP","Mayara"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:9,date:"2026-07-04",patient:"Alan Lucelio",value:13000,payment:"12x",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:10,date:"2026-07-04",patient:"Luiz Henrique",value:22000,payment:"à vista",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:11,date:"2026-07-06",patient:"Claudio Moreira",value:12000,payment:"12x",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:12,date:"2026-07-06",patient:"Sérgio Augusto",value:13900,payment:"10x",staff:["JK","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:13,date:"2026-07-06",patient:"Nelson Michael Alves",value:16500,payment:"10x",staff:["JP","L"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original"},
+{id:14,date:"2026-07-07",patient:"Leandro Pires de Souza",value:13100,payment:"12x",staff:["JP","F"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:15,date:"2026-07-07",patient:"Breno Magno dos Santos",value:13000,payment:"12x",staff:["A","JK"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original"},
+{id:16,date:"2026-07-10",patient:"Geraldo Luiz Da Canto Almeida",value:13900,payment:"Pix",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:17,date:"2026-07-10",patient:"Bruno Nazareth de Lana",value:13900,payment:"12x",staff:["A","L"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:18,date:"2026-07-10",patient:"Paloma Moreira",value:23000,payment:"Pix",staff:["JK","A"],procedure:"Sobrancelha",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:19,date:"2026-07-11",patient:"Rogério da Rocha Gouveia",value:13000,payment:"10x",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:20,date:"2026-07-11",patient:"Arthur Lopes",value:13000,payment:"à vista",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:21,date:"2026-07-11",patient:"Maria Rosa",value:3000,payment:"à vista",staff:["A"],procedure:"Sobrancelha",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:22,date:"2026-07-13",patient:"Alexandre Robert Xavier",value:12000,payment:"Pix",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:23,date:"2026-07-15",patient:"Vitor Faustino",value:25000,payment:"à vista",staff:["A"],procedure:"Extração de Barba",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:24,date:"2026-07-17",patient:"Claudio Jorge de Faria Antunes",value:null,payment:"",staff:[],procedure:"Reparo",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Reparo sem custo"},
+{id:25,date:"2026-07-17",patient:"João Camacho",value:11800,payment:"",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:26,date:"2026-07-18",patient:"João Pergentino do Carmo",value:11000,payment:"à vista",staff:["A","Mayara"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original"},
+{id:27,date:"2026-07-18",patient:"Hytalo Kildaree",value:13000,payment:"12x",staff:["L","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:28,date:"2026-07-18",patient:"Irvani Cordeiro",value:21500,payment:"12x",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:29,date:"2026-07-20",patient:"Rubens Donell",value:12100,payment:"à vista",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:30,date:"2026-07-20",patient:"Jose Marcos de Souza",value:13500,payment:"Pix",staff:["JP","JK"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original"},
+{id:31,date:"2026-07-20",patient:"Felipe Francis de Brito",value:13900,payment:"",staff:["Fabi","JK"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Venda/fechamento pela unidade Barra da Tijuca; cirurgia realizada em Botafogo"},
+{id:32,date:"2026-07-21",patient:"Everton Silva de Oliveira",value:13000,payment:"10x",staff:["A","L"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original"},
+{id:33,date:"2026-07-21",patient:"Elizeu Goeth",value:13900,payment:"",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:34,date:"2026-07-21",patient:"Alan Santiago",value:14500,payment:"Pix",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:35,date:"2026-07-22",patient:"João Ulisses Strauss",value:13200,payment:"12x",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original"},
+{id:36,date:"2026-07-22",patient:"Adilson Fernandes",value:13100,payment:"",staff:["JK","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:37,date:"2026-07-22",patient:"Allan Soares",value:11100,payment:"10x",staff:["L","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:38,date:"2026-07-23",patient:"Erivan Oliveira",value:14900,payment:"",staff:["JP","JK"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Incluído em 20/07 — mensagem: 'Incluindo dia 23 com 1'"},
+{id:39,date:"2026-07-24",patient:"Alexandre Todeschine",value:14000,payment:"12x",staff:["F","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Cancelado",obs:"Retirado do dia 24 — mensagem de 22/07 14:02 ('Retirado paciente do dia 24'); motivo informado (mensagem editada 14:06): 'A mãe passou mal está doente no hospital estado grave'"},
+{id:40,date:"2026-07-23",patient:"Rafael Eletherio",value:14500,payment:"Pix",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Reagendado",obs:"Antecipado de sexta (24/07) para quinta (23/07) — mensagem de 20/07 11:01"},
+{id:41,date:"2026-07-25",patient:"Gabriel Caldas",value:18900,payment:"Cartão",staff:[],procedure:"Sobrancelha",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:42,date:"2026-07-25",patient:"Leon Bowe",value:13900,payment:"10x",staff:["JP","W"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:43,date:"2026-07-25",patient:"Ricardo Valansi",value:14000,payment:"8x",staff:["JP","JK"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:44,date:"2026-07-27",patient:"Jorge Henrique",value:12000,payment:"à vista",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:45,date:"2026-07-27",patient:"Sandro Caldeira",value:12000,payment:"",staff:["A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:46,date:"2026-07-27",patient:"Maicon Praxedes",value:13100,payment:"Pix",staff:["JP","JK"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Cancelado",obs:"Retirado do dia 27/07 — mensagem de 26/07 16:00 ('Retirando paciente de segunda da agenda pois eletroforese não saiu'); paciente confirmado manualmente por Karina em 27/07."},
+{id:47,date:"2026-07-30",patient:"Vinicius Alves da Silva",value:13500,payment:"crédito à vista",staff:["JP","L"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Reagendado",obs:"Remanejado do dia 28/07 para o dia 30/07 — mensagem de 24/07 12:02 ('Paciente do dia 28 passado para dia 30')"},
+{id:55,date:"2026-07-30",patient:"Eucy Pinheiro",value:25000,payment:"5x",staff:["JP"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Marcado com ✅ na mensagem original. Incluído em 24/07 13:14 — mensagem: 'Dia 30 com 2'"},
+{id:56,date:"2026-07-30",patient:"Carlos Júnior",value:13500,payment:"à vista",staff:["JK","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Incluído em 25/07 10:13 — mensagem: 'Incluindo dia 30 com 3'"},
+{id:48,date:"2026-07-28",patient:"José Aurélio Silva",value:22000,payment:"12x",staff:["JP","JM"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:49,date:"2026-07-28",patient:"Luiz Nunes Poyes",value:5000,payment:"5x",staff:[],procedure:"Reparo",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:53,date:"2026-07-28",patient:"Daniel Moreira",value:14000,payment:"12x",staff:["JM","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Incluído em 21/07 15:24 — mensagem: 'Incluindo dia 28'"},
+{id:50,date:"2026-07-29",patient:"Michel Costa",value:null,payment:"",staff:[],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Indicação Conecta Business"},
+{id:51,date:"2026-07-29",patient:"Alaildo Conceição Silva",value:10000,payment:"",staff:["Fabi"],procedure:"2º Transplante",hospital:"Capi Hair Botafogo",status:"Confirmado",obs:"Venda/fechamento pela unidade Barra da Tijuca; cirurgia realizada em Botafogo. Marcado com ✅ na mensagem original"},
+{id:52,date:"2026-07-31",patient:"Eduardo de Souza",value:11000,payment:"Pix",staff:["JK","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:""},
+{id:57,date:"2026-07-31",patient:"João Pedro",value:13900,payment:"10x",staff:["F","A"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Paciente (nome coincide com o de João Pedro Closer Capi Hair, que posta as atualizações do grupo — são pessoas diferentes). Identificado na repostagem completa de 26/07 16:00 (João Pedro Closer Capi Hair), sem mensagem curta de aviso separada; passa de 1 para 2 cirurgias no dia 31/07."},
+{id:54,date:"2026-07-29",patient:"Ulimar Silva",value:15500,payment:"",staff:["JP","F"],procedure:"Transplante Capilar",hospital:"Capi Hair Botafogo",status:"Agendado",obs:"Incluído em 22/07 12:39 — mensagem: 'Dia 29 com 3'"}
+];
+
