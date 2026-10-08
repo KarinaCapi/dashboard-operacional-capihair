@@ -291,14 +291,14 @@ footer{text-align:center;color:var(--muted);font-size:11.5px;padding:30px 0 10px
 
   <!-- BLOCO 2 INDIVIDUAL -->
   <h2 class="sec">Bloco 2 · Individual — Produtividade na Implantação<span class="line"></span></h2>
-  <div class="banner" style="margin-top:0"><span>🧮</span><div>Conta somente <b>quem tem UF registrado</b> no quadro (a lista de "Equipe" é só contexto). <b>UF/h individual = UF da pessoa ÷ horas dela</b>, onde entrada/saída são o horário individual informado no grupo ou, na falta, o início/fim geral da implantação; a pausa geral é descontada de quem estava presente. A média por pessoa é a média das taxas de cada cirurgia. <b>Status do UF/h:</b> 🔴 Crítico abaixo de 526 · 🟡 Atenção de 526 a 599 · 🟢 Excelente a partir de 600. <b>Clique em uma pessoa</b> para ver suas cirurgias e a evolução.</div></div>
+  <div class="banner" style="margin-top:0"><span>🧮</span><div>Conta somente <b>quem tem UF registrado</b> no quadro (a lista de "Equipe" é só contexto). <b>UF/h individual = UF total da pessoa ÷ horas totais dela</b> (soma de todas as cirurgias), onde entrada/saída são o horário individual informado no grupo ou, na falta, o início/fim geral da implantação; a pausa geral é descontada de quem estava presente. A coluna "Média por cirurgia" mostra a média das taxas de cada cirurgia e "Variação entre cirurgias" mostra o quanto o UF/h oscila de uma cirurgia para outra. <b>Status do UF/h:</b> 🔴 Crítico abaixo de 526 · 🟡 Atenção de 526 a 599 · 🟢 Excelente a partir de 600. <b>Clique em uma pessoa</b> para ver suas cirurgias e a evolução.</div></div>
   <div class="stack-full">
     <div class="card"><h3>🌱 UF/h individual por pessoa</h3><canvas id="chartEquipeImpl"></canvas></div>
     <div class="card">
       <h3>📋 Ranking individual</h3>
       <div class="table-scroll inner-scroll" style="max-height:440px;overflow-y:auto;border-radius:8px">
       <table id="tblEquipeImpl"><thead><tr>
-        <th>#</th><th>Pessoa</th><th>Filial</th><th>Cirurgias</th><th>UF total</th><th>UF médio</th><th>Tempo médio</th><th>Horas totais</th><th>UF/h</th><th>Status</th>
+        <th>#</th><th>Pessoa</th><th>Filial</th><th>Cirurgias</th><th>UF total</th><th>UF médio</th><th>Tempo médio</th><th>Horas totais</th><th>UF/h (total ÷ horas)</th><th>Média por cirurgia</th><th>Variação entre cirurgias</th><th>Status</th>
       </tr></thead><tbody></tbody></table>
       </div>
     </div>
@@ -682,7 +682,7 @@ function renderKPIs(){
     {c:'k9', lbl:'Tempo Médio Implantação', val:fmtMin(implMedio), sub:'do início da implantação ao fim', prevVal:pImplMedio, prevFmt:v=>fmtMin(v)},
     {c:'k7', lbl:'Folículos / Cirurgia', val:ufCir? ufCir.toLocaleString('pt-BR'):'—', sub:fiosCir? fiosCir.toLocaleString('pt-BR')+' fios/cirurgia':'', prevVal:pUfCir, prevFmt:v=>v.toLocaleString('pt-BR')},
     {c:'k8', lbl:'Folículos / Hora (cirurgia)', val:ufHora? ufHora.toLocaleString('pt-BR',{maximumFractionDigits:0}):'—', sub:'produtividade média', prevVal:pUfHora, prevFmt:v=>v.toLocaleString('pt-BR',{maximumFractionDigits:0})},
-    {c:'k2', lbl:'UF/h Individual (média)', val:mi.ufhInd? Math.round(mi.ufhInd).toLocaleString('pt-BR'):'—', sub:'implantação · só quem tem UF registrado', prevVal:pmi.ufhInd, prevFmt:v=>Math.round(v).toLocaleString('pt-BR')},
+    {c:'k2', lbl:'UF/h Individual (total ÷ horas)', val:mi.ufhInd? Math.round(mi.ufhInd).toLocaleString('pt-BR'):'—', sub:'implantação · só quem tem UF registrado', prevVal:pmi.ufhInd, prevFmt:v=>Math.round(v).toLocaleString('pt-BR')},
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
     <div class="kpi ${k.c}"><div class="lbl">${k.lbl}</div><div class="val">${k.val}</div><div class="sub">${k.sub}</div>${wowBadgeGeral(k.prevVal,k.prevFmt)}</div>
@@ -818,7 +818,7 @@ function teamStat(r){
 function teamStats(recs){ return recs.map(teamStat).filter(Boolean); }
 function metricsImpl(recs){
   const pr=personRows(recs), ts=teamStats(recs);
-  return { ufhInd: avg(pr.map(x=>x.ufh)), ufhEq: avg(ts.map(t=>t.ufhEq)), ufHomem: avg(ts.map(t=>t.ufHomem)),
+  return { ufhInd: (sum(pr.map(x=>x.w.min))>0 ? r1(sum(pr.map(x=>x.uf))/(sum(pr.map(x=>x.w.min))/60)) : null), ufhEq: avg(ts.map(t=>t.ufhEq)), ufHomem: avg(ts.map(t=>t.ufHomem)),
            pessoas: new Set(pr.map(x=>x.pessoa)).size, nPessoasMedio: avg(ts.map(t=>t.n)) };
 }
 
@@ -830,8 +830,10 @@ function computeEquipeImplArr(recsParam){
   return Object.entries(map).map(([pessoa, rs])=>({
     equipe:pessoa, pessoa, cirurgias:rs.length,
     uf: avg(rs.map(x=>x.uf)), ufTotal: sum(rs.map(x=>x.uf)),
-    tempo: avg(rs.map(x=>x.w.min)), horasTotal: r1(sum(rs.map(x=>x.w.min))/60),
-    ufh: avg(rs.map(x=>x.ufh)),
+    tempo: avg(rs.map(x=>x.w.min)), horasTotal: sum(rs.map(x=>x.w.min))/60,
+    ufh: r1(sum(rs.map(x=>x.uf))/(sum(rs.map(x=>x.w.min))/60)),   // UF total ÷ horas totais
+    ufhMed: avg(rs.map(x=>x.ufh)),                                  // média das taxas por cirurgia
+    cv: (function(){ const v=rs.map(x=>x.ufh), m=avg(v); if(rs.length<2||!m) return null; return Math.sqrt(avg(v.map(z=>(z-m)*(z-m))))/m; })(),
     filiais: [...new Set(rs.map(x=>x.r.filial))], rows: rs
   })).sort((a,b)=>(b.ufh||0)-(a.ufh||0));
 }
@@ -857,10 +859,11 @@ function renderEquipeImplTable(arr){
       <td><b>${e.pessoa}</b>${e.cirurgias<3?' <span style="color:var(--muted);font-size:10.5px">(amostra pequena)</span>':''}</td>
       <td>${e.filiais.map(f=>`<span class="chip ${filialClass(f)}">${f}</span>`).join(' ')}</td>
       <td>${e.cirurgias}</td><td>${e.ufTotal.toLocaleString('pt-BR')}</td><td>${e.uf?e.uf.toLocaleString('pt-BR',{maximumFractionDigits:0}):'—'}</td>
-      <td>${fmtMin(e.tempo)}</td><td>${e.horasTotal!=null?e.horasTotal.toLocaleString('pt-BR'):'—'} h</td>
+      <td>${fmtMin(e.tempo)}</td><td>${e.horasTotal!=null?e.horasTotal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'} h</td>
       <td><b>${e.ufh?e.ufh.toLocaleString('pt-BR',{maximumFractionDigits:0}):'—'}</b></td>
+      <td>${e.ufhMed?Math.round(e.ufhMed).toLocaleString('pt-BR'):'—'}</td><td>${e.cv==null?'—':'±'+Math.round(e.cv*100)+'%'}</td>
       <td><span class="status-dot ${st.dot}"></span>${st.txt}</td></tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--muted)">Sem registros de implantação por pessoa para os filtros selecionados</td></tr>';
+  }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--muted)">Sem registros de implantação por pessoa para os filtros selecionados</td></tr>';
   tb.querySelectorAll('.ind-row').forEach(tr=>tr.addEventListener('click',()=>{
     selPessoa = (selPessoa===tr.dataset.pessoa) ? null : tr.dataset.pessoa;
     renderEquipeImplTable(computeEquipeImplArr());
@@ -875,7 +878,7 @@ function renderIndDetail(){
   const arr=computeEquipeImplArr(); const e=arr.find(x=>x.pessoa===selPessoa);
   if(!e){ el.innerHTML='<div class="card" style="color:var(--muted)">Sem registros dessa pessoa nos filtros atuais.</div>'; return; }
   const rows=[...e.rows].sort((a,b)=>a.r.data.localeCompare(b.r.data)||a.r.filial.localeCompare(b.r.filial));
-  el.innerHTML=`<div class="card"><h3>👤 ${e.pessoa} — ${e.cirurgias} cirurgia(s) · ${e.ufTotal.toLocaleString('pt-BR')} UF · UF/h médio ${e.ufh?Math.round(e.ufh).toLocaleString('pt-BR'):'—'}</h3>
+  el.innerHTML=`<div class="card"><h3>👤 ${e.pessoa} — ${e.cirurgias} cirurgia(s) · ${e.ufTotal.toLocaleString('pt-BR')} UF · UF/h (total ÷ horas) ${e.ufh?Math.round(e.ufh).toLocaleString('pt-BR'):'—'}</h3>
     <div class="stack-full"><div><canvas id="chartIndEvol"></canvas></div>
     <div class="table-scroll inner-scroll" style="max-height:300px;overflow-y:auto"><table><thead><tr><th>Data</th><th>Filial</th><th>Paciente</th><th>Líder</th><th>UF</th><th>Entrada–Saída</th><th>Pausa</th><th>Tempo</th><th>UF/h</th></tr></thead><tbody>
     ${rows.map(x=>`<tr><td>${x.r.data.split('-').reverse().join('/')}</td><td><span class="chip ${filialClass(x.r.filial)}">${x.r.filial}</span></td><td>${x.r.paciente}</td><td>${x.r.lider}</td>
@@ -908,9 +911,11 @@ function computeEquipeBaseArr(recsParam){
       const gmin=g1-g0-pauseOverlap(x.r,g0,g1); if(gmin<=0) return null;
       return {gmin, ufh:r1(x.uf/(gmin/60))};
     }).filter(Boolean);
-    const ufhEq = avg(vals.map(v=>v.ufh));
-    return { pessoa:e.pessoa, cirurgias:e.cirurgias, uf:e.uf, tempoEq:avg(vals.map(v=>v.gmin)), ufhEq, ufhInd:e.ufh,
-             dif: (ufhEq!=null && e.ufh!=null) ? r1(e.ufh-ufhEq) : null };
+    const vv = e.rows.map(x=>{ const g0=toMin(x.r.implantacao), g1=toMin(x.r.implantacao_fim); if(g0===null||g1===null||g1<=g0) return null; const gm=g1-g0-pauseOverlap(x.r,g0,g1); return gm>0?{gm,uf:x.uf,im:x.w.min}:null; }).filter(Boolean);
+    const ufhEq = vv.length ? r1(sum(vv.map(v=>v.uf))/(sum(vv.map(v=>v.gm))/60)) : null;
+    const ufhIndPar = vv.length ? r1(sum(vv.map(v=>v.uf))/(sum(vv.map(v=>v.im))/60)) : e.ufh;
+    return { pessoa:e.pessoa, cirurgias:e.cirurgias, uf:e.uf, tempoEq:avg(vals.map(v=>v.gmin)), ufhEq, ufhInd:ufhIndPar,
+             dif: (ufhEq!=null && ufhIndPar!=null) ? r1(ufhIndPar-ufhEq) : null };
   }).sort((a,b)=>(b.ufhEq||0)-(a.ufhEq||0));
 }
 function renderEquipeImpl2Table(){
@@ -1354,9 +1359,9 @@ function simBuild(){
     const rf = recs.filter(r=>r.filial===f);
     // implantadoras
     const bp = {};
-    rowsAll.filter(x=>x.r.filial===f).forEach(x=>{ (bp[x.pessoa]=bp[x.pessoa]||[]).push(x.ufh); });
+    rowsAll.filter(x=>x.r.filial===f).forEach(x=>{ (bp[x.pessoa]=bp[x.pessoa]||[]).push(x); });
     const impl = Object.entries(bp).filter(([p,v])=>v.length>=SIM_MIN_IMPL && SIM_EXCLUIR_IMPL.indexOf(p)<0)
-      .map(([p,v])=>({pessoa:p,ufh:simMean(v),n:v.length,cv:simCv(v)})).sort((a,b)=>b.ufh-a.ufh);
+      .map(([p,v])=>({pessoa:p,ufh:v.reduce((a,x)=>a+x.uf,0)/(v.reduce((a,x)=>a+x.w.min,0)/60),n:v.length,cv:simCv(v.map(x=>x.ufh))})).sort((a,b)=>b.ufh-a.ufh);
     // líderes
     const bl = {};
     rf.forEach(r=>{ (bl[r.lider]=bl[r.lider]||[]).push(r); });
@@ -1424,7 +1429,7 @@ function renderSim(){
   const dAvg = N? saved/N : 0; const red = dAvg/tAtualAll*100;
   let h='';
   h+='<h2 class="sec">🎯 Simulação — Equipe Ideal por Filial</h2>';
-  h+='<div class="banner"><span>ℹ️</span><div>Simulação estatística recalculada automaticamente a partir das <b>'+N+' cirurgias</b> registradas ('+fy(d0)+' a '+fy(d1)+'). Para cada filial, identifica os profissionais com melhor UF/hora em cada etapa e simula o tempo/produtividade se essas equipes fossem formadas. Na implantação usa o <b>UF/h individual</b> (só quem tem UF registrado; horário individual quando existe, senão o geral; pausa descontada) — excluindo Kamilly, Nathalia e Maria Eduarda, a pedido da Karina. Critérios mínimos: líder com ≥'+SIM_MIN_LIDER+' cirurgias na filial e implantadora com ≥'+SIM_MIN_IMPL+' registros.</div></div>';
+  h+='<div class="banner"><span>ℹ️</span><div>Simulação estatística recalculada automaticamente a partir das <b>'+N+' cirurgias</b> registradas ('+fy(d0)+' a '+fy(d1)+'). Para cada filial, identifica os profissionais com melhor UF/hora em cada etapa e simula o tempo/produtividade se essas equipes fossem formadas. Na implantação usa o <b>UF/h individual (UF total ÷ horas totais)</b> (só quem tem UF registrado; horário individual quando existe, senão o geral; pausa descontada) — excluindo Kamilly, Nathalia e Maria Eduarda, a pedido da Karina. Critérios mínimos: líder com ≥'+SIM_MIN_LIDER+' cirurgias na filial e implantadora com ≥'+SIM_MIN_IMPL+' registros.</div></div>';
   h+='<div class="kpi-grid">'+
    '<div class="kpi k1"><div class="lbl">Cirurgias Analisadas</div><div class="val">'+N+'</div><div class="sub">'+fd(d0)+' – '+fy(d1)+' · 3 filiais</div></div>'+
    '<div class="kpi k4"><div class="lbl">Tempo Médio Atual</div><div class="val">'+simFmtH(tAtualAll)+'</div><div class="sub">todas as filiais</div></div>'+
@@ -1443,7 +1448,7 @@ function renderSim(){
   h+='<h2 class="sec">Leitura para a Direção</h2><div class="insight-grid">';
   if(R.Botafogo) h+='<div class="insight"><div class="icon">🏆</div><div class="t">Maior oportunidade: Botafogo</div><div class="d">Com as profissionais redistribuídas entre as 3 salas, cada equipe roda a <b>~'+simFmtH(bm)+' por cirurgia ('+simPct(bred)+')</b> e <b>~'+Math.round(bufh)+' UF/h</b> — praticamente igual entre as salas (diferença de só '+simNum(R.Botafogo.spread,1)+' minutos).</div></div>';
   h+='<div class="insight"><div class="icon">⚠️</div><div class="t">Extração e Incisão: dado por equipe, não por pessoa</div><div class="d">A base não registra quem executa individualmente essas duas etapas — só a implantação tem esse detalhe. O ranking de Extração/Incisão usa o líder da cirurgia como aproximação de performance da equipe.</div></div>';
-  h+='<div class="insight"><div class="icon">⚖️</div><div class="t">Como as salas foram escolhidas</div><div class="d">Líderes: menores tempos combinados de extração+incisão (UF médio da líder ÷ UF/h). Implantadoras: UF/h individual médio (a líder escolhida não entra como implantadora de outra sala da mesma filial). Tempo simulado = extração + incisão + implantação (soma dos UF/h das 3 implantadoras) + intervalos médios históricos da líder. Em Botafogo as 3 salas foram combinadas por busca exaustiva para equalizar o tempo.</div></div>';
+  h+='<div class="insight"><div class="icon">⚖️</div><div class="t">Como as salas foram escolhidas</div><div class="d">Líderes: menores tempos combinados de extração+incisão (UF médio da líder ÷ UF/h). Implantadoras: UF/h individual (UF total ÷ horas totais; a líder escolhida não entra como implantadora de outra sala da mesma filial). Tempo simulado = extração + incisão + implantação (soma dos UF/h das 3 implantadoras) + intervalos médios históricos da líder. Em Botafogo as 3 salas foram combinadas por busca exaustiva para equalizar o tempo.</div></div>';
   h+='<div class="insight"><div class="icon">📊</div><div class="t">Goiânia e Barra: ganho limitado por amostra</div><div class="d">Com uma sala só, a equipe "ideal" é a melhor líder disponível com as 3 melhores implantadoras da unidade. Amostras pequenas (n baixo) pedem cautela — confira a coluna n antes de decidir.</div></div>';
   h+='<div class="insight"><div class="icon">💡</div><div class="t">Recomendação</div><div class="d">Formar as 3 equipes de Botafogo como piloto fixo (composição acima) e ampliar o registro individual de Extração/Incisão para viabilizar a mesma divisão em múltiplas salas nas outras unidades. A simulação se atualiza sozinha a cada nova cirurgia incluída na base.</div></div></div>';
   root.innerHTML=h;
