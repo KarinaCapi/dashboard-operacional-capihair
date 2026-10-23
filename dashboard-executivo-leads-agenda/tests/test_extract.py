@@ -42,7 +42,7 @@ class Pipeline(unittest.TestCase):
               dict(ID='3', NAME='C closer', DATE_FROM='15.10.2026 11:00:00', COLOR='#0092cc', CREATED_BY='41'),
               dict(ID='4', NAME='D v4 Joyce fechou', DATE_FROM='16.10.2026 11:00:00', COLOR='#de2b24', CREATED_BY='35')]
         self.ev = ev
-        def fake(url, headers=None, retries=4):
+        def fake(url, headers=None, retries=4, fonte='API'):
             if '/api/v4/leads?' in url:
                 return {'_embedded': {'leads': self.leads if 'filter%5Bpipeline_id%5D%5B%5D=14238387' in url else []}, '_links': {}}
             if '/api/v4/events' in url:
