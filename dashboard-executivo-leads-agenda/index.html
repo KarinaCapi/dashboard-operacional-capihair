@@ -1,0 +1,156 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Executivo – Capi Hair</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#161a1f;--mut:#667085;--bd:#e2e5e9;--bot:#1f6feb;--bar:#d93025;--goi:#e5a900;--ok:#15803d;--bad:#b91c1c}
+@media(prefers-color-scheme:dark){:root{--bg:#101318;--card:#1a1f26;--tx:#e8eaed;--mut:#9aa3af;--bd:#2b323b;--ok:#4ade80;--bad:#f87171}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{padding:14px 16px;background:var(--card);border-bottom:1px solid var(--bd)}h1{font-size:18px;margin:0}.sub{color:var(--mut);font-size:12px;margin-top:2px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--bd);align-items:flex-end;position:sticky;top:0;z-index:5}
+.bar label{font-size:11px;color:var(--mut);display:flex;flex-direction:column;gap:2px}select,input{padding:6px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);font:inherit}
+nav{display:flex;gap:4px;padding:6px 16px 0;overflow-x:auto;background:var(--card)}nav button{border:0;background:none;color:var(--mut);padding:9px 12px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font:inherit}nav button.on{color:var(--tx);border-color:var(--tx);font-weight:600}
+main{padding:16px;max-width:1280px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.k{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}.k b{display:block;font-size:26px;line-height:1.1}.k span{font-size:12px;color:var(--mut)}.k small{display:block;font-size:11px;color:var(--mut);margin-top:2px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:14px;overflow-x:auto}h2{font-size:14px;margin:0 0 8px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-weight:600;font-size:12px}td small{color:var(--mut);font-size:11px;margin-left:3px}
+tr.t td{font-weight:700}tr.c{cursor:pointer}tr.c:hover{background:var(--bg)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;color:#fff}.BOTAFOGO{background:var(--bot)}.BARRA{background:var(--bar)}.GOIANIA{background:var(--goi);color:#222}
+.note{font-size:12px;color:var(--mut);margin-top:6px}.pane{display:none}.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.cu{border-top:5px solid}
+.sb{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--bd);min-width:160px}.sb i{display:block;height:100%}
+.leg{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--mut);margin:6px 0}.leg b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.up{color:var(--ok)}.dn{color:var(--bad)}.warn{background:#fff7e0;color:#5c4400;border:1px solid #f0d58a;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:12px}
+@media(prefers-color-scheme:dark){.warn{background:#2b2410;color:#f3d98a;border-color:#5a4a16}}
+dialog{border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);max-width:760px;width:94%}
+</style></head><body>
+<header><h1>Painel Executivo – Leads, Agenda e No-show</h1><div class="sub" id="sub"></div></header>
+<div class="bar">
+<label>Período<select id="fm"><option value="dia">Dia</option><option value="semana">Semana acumulada</option><option value="periodo">Período personalizado</option><option value="tudo">Base completa</option></select></label>
+<label id="l1">De<input type="date" id="d1"></label><label id="l2">Até<input type="date" id="d2"></label>
+<label>Filial<select id="fu"></select></label><label>SDR<select id="fs"></select></label><label>Origem<select id="fo"></select></label>
+<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="fc">Comparar com período anterior</label></div>
+<nav id="nav"></nav><main id="main"></main>
+<dialog id="dlg"></dialog>
+<script>
+function boot(D,S){
+const U={BOTAFOGO:'Botafogo',BARRA:'Barra',GOIANIA:'Goiânia'};const UC={BOTAFOGO:'var(--bot)',BARRA:'var(--bar)',GOIANIA:'var(--goi)'};
+const SDRS=['Fabiana','Jordana','Luana','Joyce','Waleska'];const SU={Fabiana:'BOTAFOGO',Jordana:'BOTAFOGO',Luana:'BOTAFOGO',Joyce:'BARRA',Waleska:'GOIANIA'};
+const iso=d=>d;const br=i=>i.slice(8)+'/'+i.slice(5,7);
+const KM=D.KM.map(r=>({d:iso(r[0]),s:r[1],u:r[2],o:r[3],st:r[4],n:r[5]}));const AG=D.AG.map(r=>({d:iso(r[0]),u:r[1],s:r[2],k:r[3],st:r[4],n:r[5]}));
+const dates=[...new Set(KM.map(r=>r.d).concat(AG.map(r=>r.d)))].sort();const MIN=dates[0],MAX=dates[dates.length-1];
+const addD=(i,n)=>{const x=new Date(i+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10)};
+const dow=i=>new Date(i+'T12:00:00Z').getUTCDay();
+function prevOp(){const n=new Date(Date.now()-3*3600e3);let t=n.toISOString().slice(0,10);t=addD(t,-1);if(dow(t)===0)t=addD(t,-1);return t}
+let DEF=prevOp();let defNote='';if(DEF<MIN||DEF>MAX){defNote=`Dia anterior (${br(DEF)}) ainda não está na base; exibindo o último dia disponível (${br(MAX)}).`;DEF=MAX}
+const CATS=[['ATEND','Em atendimento','#0e7490'],['NAOAT','Não atenderam','#94a3b8'],['DESQ','Desqualificados','#a16207'],['DDD','DDD fora da região','#d6c7a1'],['NCLIC','Não clicaram','#cbd5e1'],['MARCOU','Marcaram avaliação','#15803d'],['NOSHOW','No-show (Kommo)','#b91c1c'],['FECHOU','Fechou','#166534'],['NFECH','Não fechou','#7c3aed']];
+const MAP={'Leads V4':'ATEND','Em atendimento':'ATEND','Não atendeu':'NAOAT','Desqualificado Fin':'DESQ','DDD fora da região':'DDD','Não clicou':'NCLIC','Marcou avaliação':'MARCOU','No Show':'NOSHOW','Fechou':'FECHOU','Não fechou':'NFECH'};
+const OUT=[...new Set(KM.filter(r=>r.o==='V4'&&!MAP[r.st]).map(r=>r.st))];OUT.forEach(s=>CATS.push(['X:'+s,s,'#64748b']));
+const catOf=r=>MAP[r.st]||'X:'+r.st;
+const ST=['CONFIRMADA','PENDENTE','REALIZADA','FECHOU','NÃO FECHOU','VETADO','FALTOU','DESMARCOU','REMARCADO'];
+const $=id=>document.getElementById(id);let tab=0;
+const opt=(id,a)=>$(id).innerHTML=a.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+opt('fu',[['','Todas']].concat(Object.entries(U)));opt('fs',[['','Todas']].concat(SDRS.map(s=>[s,s])));opt('fo',[['','Todas'],['V4','Leads V4 / tráfego'],['IND','Indicação']]);
+$('d1').min=$('d2').min=MIN;$('d1').max=$('d2').max=MAX;$('d1').value=DEF;$('d2').value=DEF;
+const TABS=['Painel executivo','Lead Indicação','Agenda Bitrix – detalhe','Qualidade dos dados'];
+$('nav').innerHTML=TABS.map((t,i)=>`<button data-i="${i}">${t}</button>`).join('');
+$('nav').onclick=e=>{if(e.target.dataset.i){tab=+e.target.dataset.i;draw()}};
+['fm','d1','d2','fu','fs','fo','fc'].forEach(i=>$(i).onchange=()=>{if(i==='d1'&&$('d2').value<$('d1').value)$('d2').value=$('d1').value;draw()});
+$('sub').textContent=`Kommo: coleta de ${D.META.kommo_snapshot} · Bitrix: coleta de ${D.META.bitrix_leitura} · Agenda por cor do Bitrix; leads por SDR/funil do Kommo`;
+function range(){const m=$('fm').value;let a=$('d1').value||DEF,b=$('d2').value||a;
+ if(m==='dia'){b=a}else if(m==='semana'){const w=(dow(a)+6)%7;a=addD(a,-w);b=addD(a,5)}else if(m==='tudo'){a=MIN;b=MAX}
+ return[a,b]}
+function prevRange([a,b]){const n=Math.round((new Date(b)-new Date(a))/864e5)+1;return[addD(a,-n),addD(a,-1)]}
+const inR=(d,[a,b])=>d>=a&&d<=b;
+function sel(rg){const f={u:$('fu').value,s:$('fs').value,o:$('fo').value};
+ return{K:KM.filter(r=>inR(r.d,rg)&&(!f.u||r.u===f.u)&&(!f.s||r.s===f.s)&&(!f.o||r.o===f.o)),
+ A:AG.filter(r=>inR(r.d,rg)&&(!f.u||r.u===f.u)&&(!f.s||r.s===f.s)&&(!f.o||(f.o==='IND')===(r.k==='IND')))}}
+const sum=(a,k='n')=>a.reduce((x,r)=>x+r[k],0);const pc=(v,t)=>t?(v/t*100).toFixed(1).replace('.',',')+'%':'–';
+const kc=(a,c)=>sum(a.filter(r=>catOf(r)===c));
+function ag(A){const g=s=>sum(A.filter(r=>s.includes(r.st)));const prev=sum(A),canc=g(['DESMARCOU']),rem=g(['REMARCADO']),el=prev-canc-rem;
+ const real=g(['REALIZADA','FECHOU','NÃO FECHOU']),vet=g(['VETADO']),fal=g(['FALTOU']),pen=g(['CONFIRMADA','PENDENTE']),fec=g(['FECHOU']);
+ return{prev,canc,rem,el,real,vet,fal,pen,fec,comp:real+vet,nf:g(['NÃO FECHOU'])}}
+function met(rg){const{K,A}=sel(rg);const L=A.filter(r=>r.k==='LEAD'),I=A.filter(r=>r.k==='IND');const kv=K.filter(r=>r.o==='V4');
+ return{leads:sum(K),v4:sum(kv),ind:sum(K.filter(r=>r.o==='IND')),atend:kc(kv,'ATEND'),naoat:kc(kv,'NAOAT'),nclic:kc(kv,'NCLIC'),marcou:kc(kv,'MARCOU'),L:ag(L),I:ag(I),K,A,kv}}
+const hasData=rg=>rg[0]>=MIN&&rg[1]<=MAX;
+function dlt(cur,prev,hd){if(!hd)return'';const d=cur-prev;return `<small>${d>0?'▲ +':d<0?'▼ ':'= '}${d} vs. período anterior (${prev})</small>`}
+const kpi=(v,l,x='')=>`<div class="k"><b>${v}</b><span>${l}</span>${x}</div>`;
+const tg=u=>`<span class="tag ${u}">${U[u]}</span>`;
+const sbar=(a,tot)=>`<div class="sb">${CATS.map(([c,l,col])=>{const n=kc(a,c);return n?`<i title="${l}: ${n}" style="width:${n/tot*100}%;background:${col}"></i>`:''}).join('')}</div>`;
+const legend=()=>`<div class="leg">${CATS.filter(([c])=>sel([MIN,MAX]).K.some(r=>catOf(r)===c)).map(([c,l,col])=>`<span><b style="background:${col}"></b>${l}</span>`).join('')}</div>`;
+function classTable(groups,firstH,withTot,clickable){
+ const cols=CATS.filter(([c])=>!c.startsWith('X:')||groups.some(g=>g.rows.some(r=>catOf(r)===c)));
+ const head=`<tr><th>${firstH}</th><th>Total de leads</th>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr>`;
+ const row=g=>{const t=sum(g.rows);return `<tr ${clickable?`class="c" data-sdr="${g.key}"`:''}><td>${g.label}</td><td><b>${t}</b></td>${cols.map(([c])=>{const n=kc(g.rows,c);return `<td>${n}<small>${t?pc(n,t):''}</small></td>`}).join('')}</tr>`};
+ const all=groups.flatMap(g=>g.rows);const t=sum(all);
+ return `<table>${head}${groups.map(row).join('')}${withTot?`<tr class="t"><td>Total</td><td>${t}</td>${cols.map(([c])=>{const n=kc(all,c);return `<td>${n}<small>${pc(n,t)}</small></td>`}).join('')}</tr>`:''}</table>`}
+function painel(m,pm,hd,rg){
+ const a=m.L,p=pm.L;const kvT=m.v4;
+ const sdrs=SDRS.filter(s=>(!$('fs').value||$('fs').value===s)&&(!$('fu').value||SU[s]===$('fu').value));
+ const top=CATS.filter(([c])=>['ATEND','NAOAT','NCLIC','DESQ','DDD'].includes(c)).map(([c,l])=>[l,kc(m.kv,c)]).sort((x,y)=>y[1]-x[1]).slice(0,3);
+ const att=[];
+ top.forEach(([l,n])=>{if(n)att.push(`${l}: ${n} lead(s) (${pc(n,kvT)} dos leads V4)`)});
+ if(a.fal)att.push(`No-show na agenda: ${a.fal} de ${a.el} elegíveis (${pc(a.fal,a.el)})`);
+ if(a.pen)att.push(`${a.pen} agendamento(s) pendente(s), sem desfecho`);
+ const un=Object.keys(U).filter(u=>!$('fu').value||$('fu').value===u);
+ return `${defNote&&$('fm').value==='dia'&&$('d1').value===DEF?`<div class="warn">${defNote}</div>`:''}
+ <div class="grid">${kpi(m.leads,'Leads recebidos',dlt(m.leads,pm.leads,hd))}${kpi(m.atend,'Em atendimento (V4)',dlt(m.atend,pm.atend,hd)+`<small>${pc(m.atend,kvT)} dos leads V4</small>`)}${kpi(m.naoat+m.nclic,'Não atenderam + não clicaram',dlt(m.naoat+m.nclic,pm.naoat+pm.nclic,hd)+`<small>${m.naoat} não atenderam · ${m.nclic} não clicaram</small>`)}${kpi(m.marcou,'Marcaram avaliação (Kommo)',dlt(m.marcou,pm.marcou,hd))}</div>
+ <div class="grid">${kpi(a.prev,'Agendamentos previstos (Bitrix)',dlt(a.prev,p.prev,hd))}${kpi(a.comp,'Compareceram',dlt(a.comp,p.comp,hd)+`<small>${pc(a.comp,a.el)} de ${a.el} elegíveis</small>`)}${kpi(a.fal,'Faltaram (no-show)',dlt(a.fal,p.fal,hd)+`<small>${pc(a.fal,a.el)} de ${a.el} elegíveis</small>`)}${kpi(m.I.prev,'Agend. por indicação (à parte)',dlt(m.I.prev,pm.I.prev,hd))}</div>
+ <div class="card"><h2>Pontos que pedem atenção (maiores volumes)</h2>${att.length?'<ul style="margin:0;padding-left:18px">'+att.map(x=>`<li>${x}</li>`).join('')+'</ul>':'Sem registros no período.'}<div class="note">Ranking por volume, sem meta aprovada: não indica bom ou ruim.</div></div>
+ <div class="card"><h2>Resultado individual por SDR – Leads V4 / tráfego</h2>${classTable(sdrs.map(s=>({key:s,label:`${s} ${tg(SU[s])}`,rows:m.kv.filter(r=>r.s===s)})),'SDR',true,true)}${legend()}
+ <div class="note">Cada lead aparece em uma única etapa (foto do Kommo). "Em atendimento" = Leads V4 + Em atendimento, sem duplicar. Clique em uma SDR para ver o detalhe agregado. Percentual sobre o total de leads V4 da linha. Indicação fica em aba própria${m.ind?` (${m.ind} lead(s) no período)`:''}.</div></div>
+ <div class="card"><h2>Distribuição visual por SDR</h2>${sdrs.map(s=>{const r=m.kv.filter(x=>x.s===s),t=sum(r);return t?`<div style="display:grid;grid-template-columns:90px 1fr 40px;gap:8px;align-items:center;margin:5px 0"><span>${s}</span>${sbar(r,t)}<b style="text-align:right">${t}</b></div>`:''}).join('')}</div>
+ <h2 style="margin:6px 0">Consolidado por filial</h2><div class="cols">${un.map(u=>{const kk=m.kv.filter(r=>r.u===u),t=sum(kk),al=m.A.filter(r=>r.u===u&&r.k==='LEAD'),x=ag(al);
+  return `<div class="card cu" style="border-color:${UC[u]}"><h2>${U[u]}</h2><div class="grid" style="grid-template-columns:repeat(2,1fr)">${kpi(t,'Leads V4 (SDRs da filial)')}${kpi(kc(kk,'ATEND'),'Em atendimento',`<small>${pc(kc(kk,'ATEND'),t)}</small>`)}${kpi(kc(kk,'MARCOU'),'Marcaram avaliação')}${kpi(x.prev,'Agendados na agenda (cor)')}${kpi(x.comp,'Compareceram')}${kpi(x.fal,'Faltaram')}</div>${t?sbar(kk,t):''}
+  <table style="margin-top:8px">${CATS.filter(([c])=>kc(kk,c)).map(([c,l])=>`<tr><td>${l}</td><td>${kc(kk,c)}</td><td>${pc(kc(kk,c),t)}</td></tr>`).join('')}</table></div>`}).join('')}</div>
+ <div class="note">Leads: filial pela SDR/funil no Kommo. Agendamentos: filial pela cor da agenda no Bitrix. Critérios distintos por regra aprovada.</div>
+ <div class="card"><h2>Agenda do Bitrix por data e unidade (leads V4)</h2>${agTable(m.A.filter(r=>r.k==='LEAD'),rg)}</div>`}
+function agTable(A,rg){const ds=dates.filter(d=>inR(d,rg));const rows=[];ds.forEach(d=>Object.keys(U).filter(u=>!$('fu').value||$('fu').value===u).forEach(u=>{const x=ag(A.filter(r=>r.d===d&&r.u===u));if(x.prev)rows.push([br(d),tg(u),x.prev,x.comp,x.fal,pc(x.comp,x.el),pc(x.fal,x.el)])}));
+ const t=ag(A);return `<table><tr><th>Data</th><th>Unidade</th><th>Previstos</th><th>Compareceram</th><th>Faltaram</th><th>Comparecimento</th><th>No-show</th></tr>${rows.map(r=>`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}<tr class="t"><td>Total</td><td></td><td>${t.prev}</td><td>${t.comp}</td><td>${t.fal}</td><td>${pc(t.comp,t.el)}</td><td>${pc(t.fal,t.el)}</td></tr></table><div class="note">Denominador = elegíveis (previstos − canceladas − remarcadas): ${t.el}.</div>`}
+function indic(m,rg){const KI=m.K.filter(r=>r.o==='IND'),AI=m.A.filter(r=>r.k==='IND');const sts=[...new Set(KI.map(r=>r.st))];const x=ag(AI);
+ const byS=SDRS.map(s=>[s,KI.filter(r=>r.s===s)]).filter(([s,r])=>sum(r));
+ return `<div class="warn">Indicação é apresentada à parte e nunca entra em Leads V4, em "Em atendimento" gerencial nem nas taxas de leads.</div><div class="grid">${kpi(sum(KI),'Leads Indicação (Kommo)')}${kpi(x.prev,'Agendamentos por indicação (Bitrix)')}${kpi(x.comp,'Compareceram')}${kpi(x.fal,'Faltaram')}</div>
+ <div class="card"><h2>Funil Indicação por SDR e filial</h2><table><tr><th>SDR</th><th>Filial</th><th>Total</th>${sts.map(s=>`<th>${s}</th>`).join('')}</tr>${byS.map(([s,r])=>`<tr><td>${s}</td><td>${tg(SU[s])}</td><td><b>${sum(r)}</b></td>${sts.map(z=>`<td>${sum(r.filter(q=>q.st===z))}</td>`).join('')}</tr>`).join('')}<tr class="t"><td>Total</td><td></td><td>${sum(KI)}</td>${sts.map(z=>`<td>${sum(KI.filter(q=>q.st===z))}</td>`).join('')}</tr></table></div>
+ <div class="card"><h2>Total de leads Indicação por dia</h2><table><tr><th>Data</th><th>Leads</th></tr>${dates.filter(d=>inR(d,rg)).map(d=>`<tr><td>${br(d)}</td><td>${sum(KI.filter(r=>r.d===d))}</td></tr>`).join('')}</table></div>
+ <div class="card"><h2>Agendamentos por indicação por status e unidade</h2><table><tr><th>Unidade</th>${ST.map(s=>`<th>${s}</th>`).join('')}<th>Total</th></tr>${Object.keys(U).map(u=>{const a=AI.filter(r=>r.u===u);return `<tr><td>${tg(u)}</td>${ST.map(s=>`<td>${sum(a.filter(r=>r.st===s))}</td>`).join('')}<td>${sum(a)}</td></tr>`}).join('')}</table><div class="note">Taxas de indicação só serão exibidas após validação própria do denominador.</div></div>`}
+function agDet(m,rg){const L=ag(m.A.filter(r=>r.k==='LEAD')),I=ag(m.A.filter(r=>r.k==='IND'));
+ const lines=[['Total de avaliações previstas','prev'],['Realizadas (Realizada + Fechou + Não fechou)','real'],['Vetadas (compareceram e foram vetadas)','vet'],['No-show (Faltou)','fal'],['Canceladas (Desmarcou)','canc'],['Remarcadas','rem'],['Pendentes (confirmadas ou sem status)','pen'],['Fechamentos confirmados (status Fechou)','fec'],['Não fecharam','nf']];
+ return `<div class="card"><h2>Detalhe da agenda do Bitrix</h2><table><tr><th>Indicador</th><th>Leads V4</th><th>Indicação (à parte)</th></tr>${lines.map(([l,k])=>`<tr><td>${l}</td><td>${L[k]}</td><td>${I[k]}</td></tr>`).join('')}<tr class="t"><td>Elegíveis (denominador)</td><td>${L.el}</td><td>${I.el}</td></tr><tr class="t"><td>Comparecimento = (realizadas + vetadas) ÷ elegíveis</td><td>${pc(L.comp,L.el)}</td><td>–</td></tr><tr class="t"><td>No-show = faltou ÷ elegíveis</td><td>${pc(L.fal,L.el)}</td><td>–</td></tr></table>
+ <div class="note">Avaliação realizada não é venda fechada. "Realizada, em negociação" não é fechamento. Vetado só conta como comparecimento quando confirmado. Pendentes ficam no denominador.</div></div>
+ <div class="card"><h2>Por data e unidade</h2>${agTable(m.A.filter(r=>r.k==='LEAD'),rg)}</div>
+ <div class="card"><h2>Status por unidade (leads V4)</h2><table><tr><th>Unidade</th>${ST.map(s=>`<th>${s}</th>`).join('')}<th>Total</th></tr>${Object.keys(U).map(u=>{const a=m.A.filter(r=>r.u===u&&r.k==='LEAD');return `<tr><td>${tg(u)}</td>${ST.map(s=>`<td>${sum(a.filter(r=>r.st===s))}</td>`).join('')}<td>${sum(a)}</td></tr>`}).join('')}</table></div>`}
+function quality(m,rg){const M=D.META;const fr=Object.entries(M.fora).map(([k,v])=>`<tr><td>${k.replace('FORA – ','')}</td><td>${v}</td></tr>`).join('');
+ const allK=sum(KM),allV=sum(KM.filter(r=>r.o==='V4')),allI=sum(KM.filter(r=>r.o==='IND'));
+ const cats=CATS.reduce((s,[c])=>s+kc(KM.filter(r=>r.o==='V4'),c),0);
+ return `<div class="card"><h2>Reconciliação</h2><table><tr><th>Verificação</th><th>Resultado</th></tr>
+ <tr><td>Leads Kommo (base completa)</td><td>${allK} = V4 ${allV} + Indicação ${allI}</td></tr>
+ <tr><td>Soma das classificações V4 = total V4</td><td class="${cats===allV?'up':'dn'}">${cats} de ${allV} ${cats===allV?'✔ fecha':'✘ diferença'}</td></tr>
+ <tr><td>Agendamentos Bitrix no escopo</td><td>${M.lead_ag} leads V4 + ${M.ind_ag} indicação; ${Object.values(M.fora).reduce((a,b)=>a+b,0)} fora do escopo</td></tr></table></div>
+ <div class="card"><h2>Pendências e divergências</h2><table><tr><th>Item</th><th>Situação</th></tr>
+ <tr><td>Kommo – defasagem</td><td>Foto de ${M.kommo_snapshot}; as etapas mudam ao vivo, por isso totais por etapa podem divergir de bases manuais de outras datas.</td></tr>
+ 
+ <tr><td>Avisos da última execução</td><td>${(M.avisos&&M.avisos.length)?'<ul style="margin:0;padding-left:16px">'+M.avisos.map(x=>`<li>${x}</li>`).join('')+'</ul>':'Nenhum aviso.'}</td></tr>
+<tr><td>Agendamentos sem status</td><td class="w">${sum(AG.filter(r=>r.st==='PENDENTE'))} agendamento(s) sem status no título, mantidos como pendentes no denominador até serem atualizados.</td></tr>
+<tr><td>Confirmados sem desfecho</td><td>${sum(AG.filter(r=>r.st==='CONFIRMADA'))} agendamento(s).</td></tr>
+<tr><td>Histórico</td><td>Base aprovada congelada até ${M.historico_congelado_ate?br(M.historico_congelado_ate):'(sem base congelada)'}; o Bitrix é recalculado a partir de ${br(M.janela_bitrix_recalculada_desde)}.</td></tr>
+<tr><td>Criador / cor fora do padrão</td><td>Criadores fora do escopo (closers, social selling, não identificado) ficam em "Eventos fora do escopo". Cor nova da agenda só entra após definição de unidade; enquanto isso a atualização é bloqueada e a última versão válida é mantida.</td></tr>
+<tr><td>Etapas do Kommo</td><td>Classificação feita pelo ID da etapa, não pelo nome. Etapa nova ou sem mapeamento aparece como coluna adicional e como aviso.</td></tr>
+<tr><td>Unidade pela cor</td><td>${M.diverg!=null?M.diverg+' agendamento(s) têm SDR de filial diferente da cor da agenda. ':''}Vale a cor da agenda (regra aprovada).</td></tr>
+<tr><td>No-show: regra de soma</td><td>Não somar. O no-show da agenda é o do Bitrix (por data do agendamento). A coluna "No Show" do Kommo é só a etapa do lead.</td></tr>
+<tr><td>Vetado</td><td>Conta como comparecimento apenas quando a presença está confirmada.</td></tr>
+<tr><td>Bitrix – status</td><td>Status inferido do título do evento + regras da gerência; sem status = Pendente.</td></tr>
+<tr><td>Detalhe por registro</td><td>O painel público só tem agregados. Lista de leads/pacientes exige acesso autenticado e não será publicada.</td></tr></table></div>
+ <div class="card"><h2>Eventos Bitrix fora do escopo de leads</h2><table><tr><th>Motivo</th><th>Eventos</th></tr>${fr}</table></div>`}
+const sBanner=()=>S&&S.ok===false?`<div class="warn"><b>A última atualização falhou</b> (${S.quando}): ${S.erro}. Exibindo a última versão válida${S.ultima_valida?' ('+S.ultima_valida+')':''}.</div>`:'';
+function draw(){[...$('nav').children].forEach((b,i)=>b.classList.toggle('on',i===tab));
+ const m0=$('fm').value;$('l1').style.display=m0==='tudo'?'none':'';$('l2').style.display=m0==='periodo'?'':'none';
+ const rg=range(),prg=prevRange(rg),hd=$('fc').checked&&hasData(prg);const m=met(rg),pm=hd?met(prg):met([MAX,MAX]);
+ let h=sBanner()+`<div class="note" style="margin:0 0 10px">Período exibido: <b>${br(rg[0])}${rg[0]!==rg[1]?' a '+br(rg[1]):''}</b>${$('fc').checked&&!hd?' · sem dados validados do período anterior para comparar':''}</div>`;
+ h+=[painel(m,pm,hd,rg),indic(m,rg),agDet(m,rg),quality(m,rg)][tab];$('main').innerHTML=h;
+ document.querySelectorAll('tr.c').forEach(tr=>tr.onclick=()=>drill(tr.dataset.sdr,rg))}
+function drill(s,rg){const K=KM.filter(r=>r.s===s&&r.o==='V4'&&inR(r.d,rg));const ds=dates.filter(d=>inR(d,rg));const cols=CATS.filter(([c])=>K.some(r=>catOf(r)===c));
+ $('dlg').innerHTML=`<h2>${s} – detalhe agregado (${br(rg[0])}${rg[0]!==rg[1]?' a '+br(rg[1]):''})</h2><table><tr><th>Data</th><th>Total</th>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr>${ds.map(d=>{const r=K.filter(x=>x.d===d);return `<tr><td>${br(d)}</td><td>${sum(r)}</td>${cols.map(([c])=>`<td>${kc(r,c)}</td>`).join('')}</tr>`}).join('')}</table><div class="note">A lista nominal de leads existe no Kommo e exige login. Não é publicada neste painel.</div><form method="dialog"><button style="margin-top:10px">Fechar</button></form>`;$('dlg').showModal()}
+draw();
+}
+const j=u=>fetch(u,{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+Promise.all([j('data/data.json'),j('data/status.json')]).then(([D,S])=>{
+ if(!D){document.getElementById('main').innerHTML='<div class="warn">O painel ainda não tem dados. Aguardando a primeira atualização validada.'+(S&&S.ok===false?'<br>Último erro ('+S.quando+'): '+S.erro:'')+'</div>';return}
+ boot(D,S)});
+</script></body></html>

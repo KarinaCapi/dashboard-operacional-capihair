@@ -1,0 +1,9 @@
+# Nunca versionar dados brutos, planilhas privadas, credenciais ou caches
+*.xlsx
+*.xls
+*.csv
+.env
+*.env
+__pycache__/
+*.pyc
+ev*.txt

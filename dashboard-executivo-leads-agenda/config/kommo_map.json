@@ -1,0 +1,371 @@
+{
+ "stage_names": {
+  "0": "Leads V4",
+  "1": "Em atendimento",
+  "2": "Não atendeu",
+  "3": "Desqualificado Fin",
+  "4": "DDD fora da região",
+  "5": "Não clicou",
+  "6": "Marcou avaliação",
+  "7": "No Show",
+  "8": "Fechou",
+  "9": "Não fechou",
+  "10": "Vetado Grau 7",
+  "11": "Atendeu ligação",
+  "12": "Lead Indicação",
+  "13": "Pré agendou e sumiu",
+  "14": "Agendou e não veio"
+ },
+ "pipelines": {
+  "14238387": {
+   "sdr": "Fabiana",
+   "unit": "BOTAFOGO",
+   "stages": {
+    "109940507": {
+     "name": "Etapa de entrada",
+     "ind": false
+    },
+    "109940511": {
+     "name": "Leads V4",
+     "ind": false
+    },
+    "112946171": {
+     "name": "Lead Indicação",
+     "ind": true
+    },
+    "109940515": {
+     "name": "Atendeu ligação",
+     "ind": false
+    },
+    "109940519": {
+     "name": "Não atendeu",
+     "ind": false
+    },
+    "112946187": {
+     "name": "Em atendimento",
+     "ind": false
+    },
+    "112946175": {
+     "name": "Desqualificado Fin",
+     "ind": false
+    },
+    "112946179": {
+     "name": "DDD fora da região",
+     "ind": false
+    },
+    "112946183": {
+     "name": "Não clicou",
+     "ind": false
+    },
+    "113201767": {
+     "name": "Vetado Grau 7",
+     "ind": false
+    },
+    "110126447": {
+     "name": "Marcou avaliação",
+     "ind": false
+    },
+    "111812015": {
+     "name": "No Show",
+     "ind": false
+    },
+    "112946191": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "112946195": {
+     "name": "Não fechou",
+     "ind": false
+    },
+    "142": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "143": {
+     "name": "Não fechou",
+     "ind": false
+    }
+   }
+  },
+  "13997087": {
+   "sdr": "Jordana",
+   "unit": "BOTAFOGO",
+   "stages": {
+    "108028883": {
+     "name": "Etapa de entrada",
+     "ind": false
+    },
+    "108028887": {
+     "name": "Leads V4",
+     "ind": false
+    },
+    "112944431": {
+     "name": "Lead Indicação",
+     "ind": true
+    },
+    "108028891": {
+     "name": "Atendeu ligação",
+     "ind": false
+    },
+    "108810151": {
+     "name": "Não atendeu",
+     "ind": false
+    },
+    "109119443": {
+     "name": "Em atendimento",
+     "ind": false
+    },
+    "112944439": {
+     "name": "Desqualificado Fin",
+     "ind": false
+    },
+    "112944443": {
+     "name": "DDD fora da região",
+     "ind": false
+    },
+    "112944831": {
+     "name": "Não clicou",
+     "ind": false
+    },
+    "113201791": {
+     "name": "Vetado Grau 7",
+     "ind": false
+    },
+    "108028895": {
+     "name": "Marcou avaliação",
+     "ind": false
+    },
+    "111810203": {
+     "name": "No Show",
+     "ind": false
+    },
+    "109119447": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "109119451": {
+     "name": "Não fechou",
+     "ind": false
+    },
+    "142": {
+     "name": "Pré agendou e sumiu",
+     "ind": false
+    },
+    "143": {
+     "name": "Agendou e não veio",
+     "ind": false
+    }
+   }
+  },
+  "14002491": {
+   "sdr": "Luana",
+   "unit": "BOTAFOGO",
+   "stages": {
+    "108072811": {
+     "name": "Etapa de entrada",
+     "ind": false
+    },
+    "108072815": {
+     "name": "Leads V4",
+     "ind": false
+    },
+    "112945387": {
+     "name": "Lead Indicação",
+     "ind": true
+    },
+    "108072819": {
+     "name": "Atendeu ligação",
+     "ind": false
+    },
+    "108072823": {
+     "name": "Não atendeu",
+     "ind": false
+    },
+    "109119027": {
+     "name": "Em atendimento",
+     "ind": false
+    },
+    "112945395": {
+     "name": "Desqualificado Fin",
+     "ind": false
+    },
+    "112945399": {
+     "name": "DDD fora da região",
+     "ind": false
+    },
+    "112945403": {
+     "name": "Não clicou",
+     "ind": false
+    },
+    "113201759": {
+     "name": "Vetado Grau 7",
+     "ind": false
+    },
+    "109119023": {
+     "name": "Marcou avaliação",
+     "ind": false
+    },
+    "111810739": {
+     "name": "No Show",
+     "ind": false
+    },
+    "109119031": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "109119035": {
+     "name": "Não fechou",
+     "ind": false
+    },
+    "142": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "143": {
+     "name": "Não fechou",
+     "ind": false
+    }
+   }
+  },
+  "14002571": {
+   "sdr": "Joyce",
+   "unit": "BARRA",
+   "stages": {
+    "108073631": {
+     "name": "Etapa de entrada",
+     "ind": false
+    },
+    "108073635": {
+     "name": "Leads V4",
+     "ind": false
+    },
+    "112944743": {
+     "name": "Lead Indicação",
+     "ind": true
+    },
+    "108073639": {
+     "name": "Atendeu ligação",
+     "ind": false
+    },
+    "108073643": {
+     "name": "Não atendeu",
+     "ind": false
+    },
+    "109118983": {
+     "name": "Em atendimento",
+     "ind": false
+    },
+    "112944751": {
+     "name": "Desqualificado Fin",
+     "ind": false
+    },
+    "112944755": {
+     "name": "DDD fora da região",
+     "ind": false
+    },
+    "112944759": {
+     "name": "Não clicou",
+     "ind": false
+    },
+    "113201607": {
+     "name": "Vetado Grau 7",
+     "ind": false
+    },
+    "109118979": {
+     "name": "Marcou avaliação",
+     "ind": false
+    },
+    "111810955": {
+     "name": "No Show",
+     "ind": false
+    },
+    "109118987": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "109118991": {
+     "name": "Não fechou",
+     "ind": false
+    },
+    "142": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "143": {
+     "name": "Não fechou",
+     "ind": false
+    }
+   }
+  },
+  "14002423": {
+   "sdr": "Waleska",
+   "unit": "GOIANIA",
+   "stages": {
+    "108072255": {
+     "name": "Etapa de entrada",
+     "ind": false
+    },
+    "108072259": {
+     "name": "Leads V4",
+     "ind": false
+    },
+    "112939975": {
+     "name": "Lead Indicação",
+     "ind": true
+    },
+    "108072263": {
+     "name": "Atendeu ligação",
+     "ind": false
+    },
+    "108072267": {
+     "name": "Não atendeu",
+     "ind": false
+    },
+    "109119307": {
+     "name": "Em atendimento",
+     "ind": false
+    },
+    "112939983": {
+     "name": "Desqualificado Fin",
+     "ind": false
+    },
+    "112939987": {
+     "name": "DDD fora da região",
+     "ind": false
+    },
+    "112939991": {
+     "name": "Não clicou",
+     "ind": false
+    },
+    "113201651": {
+     "name": "Vetado Grau 7",
+     "ind": false
+    },
+    "109119303": {
+     "name": "Marcou avaliação",
+     "ind": false
+    },
+    "111810655": {
+     "name": "No Show",
+     "ind": false
+    },
+    "109119311": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "109119315": {
+     "name": "Não fechou",
+     "ind": false
+    },
+    "142": {
+     "name": "Fechou",
+     "ind": false
+    },
+    "143": {
+     "name": "Não fechou",
+     "ind": false
+    }
+   }
+  }
+ }
+}

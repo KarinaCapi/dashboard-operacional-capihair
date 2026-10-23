@@ -1,0 +1,68 @@
+name: Dashboard Leads x Agenda - extração
+
+# AUTOMAÇÃO DESATIVADA: só execução manual (workflow_dispatch).
+# Para ativar a rotina diária das 11h (seg-sáb, horário de Brasília = 14h UTC),
+# remova o "#" das duas linhas de schedule abaixo, SOMENTE após a aprovação do teste
+# de ponta a ponta e a validação de uma execução real.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "check = executa e valida sem gravar nada | publish = grava data/ (exige a variável PUBLISH_ENABLED=true)"
+        type: choice
+        options: [check, publish]
+        default: check
+  # schedule:
+  #   - cron: '0 14 * * 1-6'
+
+permissions:
+  contents: write   # necessário apenas para o commit de dashboard-executivo-leads-agenda/data/
+
+concurrency:
+  group: dashboard-leads-agenda
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: dashboard-executivo-leads-agenda
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Testes (dados sintéticos)
+        run: python -W ignore -m unittest discover -s tests
+
+      - name: Trava de publicação
+        env:
+          MODE: ${{ github.event.inputs.mode || 'publish' }}
+          PUBLISH_ENABLED: ${{ vars.PUBLISH_ENABLED }}
+        run: |
+          if [ "$MODE" = "publish" ] && [ "$PUBLISH_ENABLED" != "true" ]; then
+            echo "Publicação bloqueada: defina a variável de repositório PUBLISH_ENABLED=true após a aprovação."; exit 1
+          fi
+
+      - name: Extrair, validar e (se publish) gravar agregados
+        env:
+          KOMMO_TOKEN: ${{ secrets.KOMMO_TOKEN }}
+          BITRIX_WEBHOOK_URL: ${{ secrets.BITRIX_WEBHOOK_URL }}
+          KOMMO_SUBDOMAIN: ${{ vars.KOMMO_SUBDOMAIN || 'capihair' }}
+          OVERRIDES_JSON: ${{ secrets.OVERRIDES_JSON }}
+          MODE: ${{ github.event.inputs.mode || 'publish' }}
+        run: python scripts/extract.py --mode "$MODE"
+
+      - name: Commit dos agregados (somente publish; em falha registra status.json)
+        if: ${{ always() && (github.event.inputs.mode || 'publish') == 'publish' && vars.PUBLISH_ENABLED == 'true' }}
+        run: |
+          git config user.name "dashboard-bot"
+          git config user.email "dashboard-bot@users.noreply.github.com"
+          git add data/data.json data/status.json 2>/dev/null || true
+          if git diff --cached --quiet; then echo "sem mudanças"; else
+            git commit -m "dashboard-executivo: atualização automática de dados agregados"
+            git push
+          fi
