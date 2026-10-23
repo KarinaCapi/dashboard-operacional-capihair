@@ -265,7 +265,15 @@ def run(mode, today):
     # Bitrix: histórico congelado + dados já publicados + janela móvel recalculada.
     first_new = (hist_end + dt.timedelta(days=1)) if hist_end else KOMMO_START
     win_start = max(first_new, end_excl - dt.timedelta(days=BITRIX_ROLLING_DAYS))
-    cls = extract_bitrix(hook, win_start, end_excl, overrides)
+    try:
+        cls = extract_bitrix(hook, win_start, end_excl, overrides)
+    except Fail as e:
+        if str(e).startswith('Bitrix'):  # forma da URL (nunca o valor): ajuda a achar erro de colagem
+            p = hook.split('/')
+            raise Fail(f'{e} [segredo com {len(hook)} caracteres; começa com https://: {"sim" if hook.startswith("https://") else "não"}; '
+                       f'contém /rest/: {"sim" if "/rest/" in hook else "não"}; termina com /: {"sim" if hook.endswith("/") else "não"}; '
+                       f'partes separadas por /: {len(p)}]') from None
+        raise
     avisos += gates_bitrix(cls)
     ag_new = aggregate_bitrix(cls)
     ag = []
