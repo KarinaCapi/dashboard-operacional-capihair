@@ -46,7 +46,7 @@ class Fail(Exception):
 
 
 # ----------------------------------------------------------------- HTTP (GET)
-def http_get_json(url, headers=None, retries=4):
+def http_get_json(url, headers=None, retries=4, fonte='API'):
     """GET com tentativas. Nunca inclui URL/cabeçalhos em mensagens de erro."""
     last = None
     for i in range(retries):
@@ -62,25 +62,28 @@ def http_get_json(url, headers=None, retries=4):
             if e.code == 204:
                 return None
             if e.code in (401, 403):
-                raise Fail(f'acesso negado ({e.code}); verifique o segredo/permite leitura') from None
+                raise Fail(f'{fonte}: acesso negado ({e.code}); verifique o segredo e a permissão de leitura') from None
             time.sleep(2 + 3 * i)
         except Exception as e:  # rede, JSON inválido (ex.: HTML de limite de taxa)
             last = type(e).__name__
             time.sleep(2 + 3 * i)
-    raise Fail(f'requisição falhou após {retries} tentativas ({last})')
+    raise Fail(f'{fonte}: requisição falhou após {retries} tentativas ({last})')
 
 
 # ---------------------------------------------------------------------- Kommo
 class Kommo:
     def __init__(self, sub, token):
         self.base = f'https://{sub}.kommo.com'
-        self.h = {'Authorization': 'Bearer ' + token}
+        tk = token.strip()
+        if tk.lower().startswith('bearer '):
+            tk = tk[7:].strip()
+        self.h = {'Authorization': 'Bearer ' + tk}
 
     def pages(self, path, params, key, limit=250, pause=0.25):
         page = 1
         while True:
             q = urllib.parse.urlencode(params, doseq=True)
-            d = http_get_json(f'{self.base}{path}?{q}&limit={limit}&page={page}', self.h)
+            d = http_get_json(f'{self.base}{path}?{q}&limit={limit}&page={page}', self.h, fonte='Kommo')
             time.sleep(pause)
             items = ((d or {}).get('_embedded') or {}).get(key) or []
             yield from items
@@ -152,7 +155,7 @@ def extract_bitrix(webhook, start, end_excl, overrides):
         e = min(d + dt.timedelta(days=6), end_excl - dt.timedelta(days=1))
         q = urllib.parse.urlencode({'type': 'company_calendar', 'ownerId': 0,
                                     'from': d.isoformat(), 'to': e.isoformat()})
-        r = http_get_json(f'{base}calendar.event.get.json?{q}')
+        r = http_get_json(f'{base}calendar.event.get.json?{q}', fonte='Bitrix')
         if r is None or 'result' not in r:
             raise Fail('resposta inesperada do Bitrix (sem "result")')
         for x in r['result']:
@@ -233,7 +236,7 @@ def run(mode, today):
     hist = load_json(os.path.join(data_dir, 'history_frozen.json'))
     hist_end = dt.date.fromisoformat(hist['ate']) if hist else None
     overrides = json.loads(os.environ.get('OVERRIDES_JSON') or '{}')
-    token, hook = os.environ.get('KOMMO_TOKEN'), os.environ.get('BITRIX_WEBHOOK_URL')
+    token, hook = (os.environ.get('KOMMO_TOKEN') or '').strip(), (os.environ.get('BITRIX_WEBHOOK_URL') or '').strip()
     if not token or not hook:
         raise Fail('segredos KOMMO_TOKEN e/ou BITRIX_WEBHOOK_URL não configurados')
     end_excl = today  # só dias encerrados (< hoje)
