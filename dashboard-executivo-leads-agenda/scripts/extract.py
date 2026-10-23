@@ -62,7 +62,13 @@ def http_get_json(url, headers=None, retries=4, fonte='API'):
             if e.code == 204:
                 return None
             if e.code in (401, 403):
-                raise Fail(f'{fonte}: acesso negado ({e.code}); verifique o segredo e a permissão de leitura') from None
+                det = ''
+                try:  # motivo informado pela API (texto curto; não contém credenciais)
+                    j = json.loads(e.read() or b'{}')
+                    det = str(j.get('detail') or j.get('hint') or j.get('title') or '')[:80]
+                except Exception:
+                    pass
+                raise Fail(f'{fonte}: acesso negado ({e.code}){" - " + det if det else ""}; verifique o segredo e a permissão de leitura') from None
             time.sleep(2 + 3 * i)
         except Exception as e:  # rede, JSON inválido (ex.: HTML de limite de taxa)
             last = type(e).__name__
@@ -243,7 +249,12 @@ def run(mode, today):
     avisos = []
 
     # Kommo: foto atual de todos os leads criados desde o início da base.
-    krows, kmeta = extract_kommo(Kommo(os.environ.get('KOMMO_SUBDOMAIN', 'capihair'), token), kmap, KOMMO_START, end_excl)
+    try:
+        krows, kmeta = extract_kommo(Kommo(os.environ.get('KOMMO_SUBDOMAIN', 'capihair'), token), kmap, KOMMO_START, end_excl)
+    except Fail as e:
+        if 'Kommo: acesso negado' in str(e):  # forma do token (nunca o valor): ajuda a achar erro de colagem
+            raise Fail(f'{e} [token com {len(token)} caracteres em {token.count(".") + 1} parte(s)]') from None
+        raise
     if kmeta['total'] == 0:
         raise Fail('Kommo retornou 0 leads')
     if prev and kmeta['total'] < 0.9 * prev['META']['kommo_total']:
