@@ -212,10 +212,16 @@ def gates_bitrix(cls):
 
 def compare_history(cls_hist, hist_rows):
     """Reconciliação: recomputa o período congelado a partir do Bitrix e compara com a base aprovada."""
-    now = collections.Counter({(r[0], r[1], r[2], r[3], r[4]): r[5] for r in aggregate_bitrix(cls_hist) if r[3] != 'FORA'})
-    old = collections.Counter({(r[0], r[1], r[2], r[3], r[4]): r[5] for r in hist_rows if r[3] != 'FORA'})
+    def key(r):  # eventos fora do escopo: a unidade não é critério (são exclusões por criador/tag)
+        return (r[0], '—' if r[3] == 'FORA' else r[1], r[2], r[3], r[4])
+    now = collections.Counter()
+    for r in aggregate_bitrix(cls_hist):
+        now[key(r)] += r[5]
+    old = collections.Counter()
+    for r in hist_rows:
+        old[key(r)] += r[5]
     diff = {k: (old.get(k, 0), now.get(k, 0)) for k in set(now) | set(old) if now.get(k, 0) != old.get(k, 0)}
-    return len(diff), sum(old.values()), sum(now.values())
+    return len(diff), sum(old.values()), sum(now.values())  # (células diferentes, total aprovado, total recalculado)
 
 
 # ------------------------------------------------------------------------ main
